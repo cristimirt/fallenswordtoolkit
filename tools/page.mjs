@@ -1,29 +1,7 @@
-// Builds the folder that is published on GitHub Pages: node tools/build-site.js (the deploy workflow runs it)
-// The script in src/ stays as it is; the copy in dist/ gets @updateURL and @downloadURL so that
-// Tampermonkey can update itself. BASE_URL is the address of the GitHub Pages site.
-const fs = require('fs');
-const path = require('path');
+// The install page (index.html): what the toolkit does, and the Install button for the loader.
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const BASE_URL = 'https://cristimirt.github.io/fallenswordtoolkit'; // GitHub Pages address, no slash at the end
-const OUT = path.join(__dirname, '..', 'dist');
-const SRC = 'fs_toolkit.js';
-const OUT_JS = 'fs_toolkit.user.js';
-
-fs.rmSync(OUT, { recursive: true, force: true });
-fs.mkdirSync(OUT, { recursive: true });
-
-const meta = (text, key) => (new RegExp('^// @' + key + '\\s+(.+)$', 'm').exec(text) || [])[1] || '';
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-let text = fs.readFileSync(path.join(__dirname, '..', 'src', SRC), 'utf8');
-const url = BASE_URL + '/' + OUT_JS;
-text = text.replace(/^\/\/ @(updateURL|downloadURL)\s.*\n/gm, ''); // never twice
-text = text.replace(/^\/\/ @grant\b/m, '// @updateURL    ' + url + '\n// @downloadURL  ' + url + '\n// @grant');
-fs.writeFileSync(path.join(OUT, OUT_JS), text);
-const name = meta(text, 'name');
-const version = meta(text, 'version');
-
-// what the script does, for the page people read before installing
+// what the toolkit does, for the page people read before installing
 const SECTIONS = [
   ['Backpack', [
     'Search by name as you type: every word has to appear, in any order.',
@@ -53,9 +31,14 @@ const SECTIONS = [
     'Our own pop-ups use the game\'s own tooltips and scrollbars style.',
     'Works next to the Fallen Sword Helper; the www.fallensword.com address is sent to fallensword.com so that your settings are kept in one place.',
   ]],
+  ['Settings', [
+    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map and Path Finder. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
+    'The gear button on the backpack page opens the quick settings of the backpack only (filters, display, locked items), with a link to the rest.',
+  ]],
 ];
 
-const html = `<!doctype html>
+export function pageHtml({ name, version, loaderVersion, loaderFile, build }) {
+  return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -79,6 +62,7 @@ const html = `<!doctype html>
   a.btn:hover { background: #f3e2b8; }
   a { color: #e9d3a0; }
   .card a { color: #5a3a10; }
+  .state { font-weight: bold; }
   small { opacity: .7; display: block; margin-top: 18px; }
 </style>
 </head>
@@ -87,9 +71,10 @@ const html = `<!doctype html>
   <h1>${esc(name)}</h1>
   <p class="lead">A userscript for <a href="https://fallensword.com/">Fallen Sword</a> with a better backpack and a set of small tools for the pages around it.</p>
   <div class="card install">
-    <a class="btn" href="${esc(OUT_JS)}">Install</a>
-    <span class="v">version ${esc(version)}</span>
-    <span>Needs <a href="https://www.tampermonkey.net/">Tampermonkey</a> (or a similar userscript manager). Click Install and confirm in the tab that opens; updates are picked up automatically.</span>
+    <a class="btn" href="${esc(loaderFile)}">Install</a>
+    <span class="v">toolkit ${esc(version)}, build ${esc(build)}</span>
+    <span>Needs <a href="https://www.tampermonkey.net/">Tampermonkey</a> (or a similar userscript manager). Click Install and confirm in the tab that opens. What you install is a small loader: the toolkit itself is fetched from this site, so it updates by itself, without installing again.</span>
+    <span class="state" id="state"></span>
   </div>
 ${SECTIONS.map(([title, items]) => `  <div class="card">
     <h2>${esc(title)}</h2>
@@ -97,21 +82,17 @@ ${SECTIONS.map(([title, items]) => `  <div class="card">
 ${items.map((i) => `      <li>${esc(i)}</li>`).join('\n')}
     </ul>
   </div>`).join('\n')}
-  <div class="card">
-    <h2>Settings</h2>
-    <ul>
-      <li>Open them with the gear button on the backpack page. The settings window can be dragged and scrolled; the automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.</li>
-    </ul>
-  </div>
-  <small>Built ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC</small>
+  <small>Built ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC &middot; loader ${esc(loaderVersion)}</small>
 </main>
+<script>
+  // the loader announces itself on this page: show whether it is installed
+  setTimeout(function () {
+    var v = document.documentElement.getAttribute('data-fst-loader');
+    var el = document.getElementById('state');
+    el.textContent = v ? 'Installed (loader ' + v + ')' : '';
+  }, 800);
+</script>
 </body>
 </html>
 `;
-fs.writeFileSync(path.join(OUT, 'index.html'), html);
-
-fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
-
-console.log('Built ' + OUT);
-console.log('  ' + OUT_JS + '  v' + version);
-console.log('Base URL: ' + BASE_URL);
+}

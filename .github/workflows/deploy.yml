@@ -25,7 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node tools/build-site.js
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
