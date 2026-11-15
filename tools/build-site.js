@@ -100,7 +100,8 @@ ${items.map((i) => `      <li>${esc(i)}</li>`).join('\n')}
   <div class="card">
     <h2>Settings</h2>
     <ul>
-      <li>Open them with the gear button on the backpack page. The settings window can be dragged and scrolled; the automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.</li>
+      <li>All settings are in the <b>FST</b> tab of the game&#39;s Preferences page, in categories: General, Backpack, Break down, Map and Path Finder. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.</li>
+      <li>The gear button on the backpack page opens the quick settings of the backpack only (filters, display, locked items), with a link to the rest.</li>
     </ul>
   </div>
   <small>Built ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC</small>

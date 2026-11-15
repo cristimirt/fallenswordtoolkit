@@ -13,7 +13,7 @@ A userscript for [Fallen Sword](https://fallensword.com/): a better backpack and
 - **Quick Buff:** opens in a draggable window with buffs already on the target, enhancements, last activity, stamina cost, and an Activate link.
 - **Everything else:** draggable sidebar widgets, the game's own tooltip and scrollbar style, works next to the Fallen Sword Helper.
 
-Settings: the gear button on the backpack page.
+Settings: the **FST** tab of the game's Preferences page holds every setting (General, Backpack, Break down, Map, Path Finder), each with a [?] description. The gear button on the backpack page opens the quick settings of the backpack only.
 
 ## Repository
 

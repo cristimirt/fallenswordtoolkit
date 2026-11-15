@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fallen Sword Toolkit
 // @namespace    fs.backpacksearch
-// @version      2.0.1
+// @version      2.1.0
 // @description  Backpack search, filters, item locks and automatic break down; a break down button for hunting loot; searchable Buff Market and Auction House filters; a Quick Buff pop-up; draggable sidebar widgets; a wiki button and a Path Finder on the world map
 // @author       Aurik16
 // @include      https://www.fallensword.com/*
@@ -67,7 +67,7 @@
   ];
   const PER_PAGE_CHOICES = [10, 20, 30, 40, 50, 100];
   const SIZE_CHOICES = [50, 75, 100]; // item icon size, percent
-  const DEFAULT_SETTINGS = { typeStyle: 'new', always: ['tg'], perPage: 20, size: 100, empty: true, modernPager: true, lockUse: true, lockExtract: true, quickBuffPopup: true, quickBuffInfo: true, autoBreak: false, autoBreakDry: false, autoBreakRar: [0, 1], autoBreakMin: null, autoBreakMax: null };
+  const DEFAULT_SETTINGS = { typeStyle: 'new', always: ['tg'], perPage: 20, size: 100, empty: true, modernPager: true, lockUse: true, lockExtract: true, quickBuffPopup: true, quickBuffInfo: true, autoBreak: false, autoBreakDry: false, autoBreakRar: [0, 1], autoBreakMin: null, autoBreakMax: null, breakBtn: true, wikiBtn: true, pfEnabled: true };
   const lvlOrNull = (v) => { const n = parseInt(v, 10); return isNaN(n) || n < 0 ? null : n; };
   function loadSettings() {
     let o = {};
@@ -90,10 +90,19 @@
       autoBreakRar: Array.isArray(o.autoBreakRar) ? o.autoBreakRar.filter((r) => r === 0 || r === 1 || r === 2) : DEFAULT_SETTINGS.autoBreakRar.slice(),
       autoBreakMin: lvlOrNull(o.autoBreakMin),
       autoBreakMax: lvlOrNull(o.autoBreakMax),
+      breakBtn: o.breakBtn !== false,
+      wikiBtn: o.wikiBtn !== false,
+      pfEnabled: o.pfEnabled !== false,
     };
   }
   function saveSettings(v) {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)); } catch (e) { /* storage unavailable */ }
+  }
+  // changes some settings, keeps the others as they are saved now (another tab may have changed them)
+  function mergeSettings(patch) {
+    SET = Object.assign(loadSettings(), patch);
+    saveSettings(SET);
+    return SET;
   }
   let SET = loadSettings();
 
@@ -267,7 +276,7 @@
     if (!$h.length) return;
     // Goes into the "[ Folders | Manage | X ]" list, right before the X.
     const $x = $h.find('.float_right a[href*="togglesection"]').last();
-    const $gear = $('#bpSettingsBtn').length ? $() : $('<a href="#" id="bpSettingsBtn" title="Toolkit settings"></a>');
+    const $gear = $('#bpSettingsBtn').length ? $() : $('<a href="#" id="bpSettingsBtn" title="Backpack settings"></a>');
     const $refresh = $('<a href="#" id="bpRefreshBtn" title="Refresh bag"></a>');
     if ($x.length) $x.before($refresh, '&nbsp;|&nbsp;', $gear, $gear.length ? '&nbsp;|&nbsp;' : '');
     else $h.children('strong').first().after($refresh, $gear);
@@ -1031,50 +1040,13 @@
     });
     paintLocks();
 
-    // ------------------------------------------------------------ settings window
-    let draftAlways = new Set();
-    const chipsHtml = (inZone) =>
-      FILTERS.filter((f) => draftAlways.has(f[0]) === inZone)
-        .map((f) => '<span class="bpChip" draggable="true" data-f="' + f[0] + '" title="Drag to the other area (or click to move it)">' + f[1] + '</span>')
-        .join('');
-    function renderZones() {
-      $('#bpZoneAlways').html(chipsHtml(true));
-      $('#bpZoneAdv').html(chipsHtml(false));
-    }
-    const choiceHtml = (group, values, cur, unit) =>
-      '<div>' + values.map((n) => '<span class="bpChoice' + (n === cur ? ' bp-on' : '') + '" data-g="' + group + '" data-v="' + n + '" role="button" tabindex="0">' + n + unit + '</span>').join('') + '</div>';
-    const choiceVal = (group, fallback) => {
-      const n = parseInt($('.bpChoice[data-g="' + group + '"].bp-on').attr('data-v'), 10);
-      return isNaN(n) ? fallback : n;
-    };
-    // [?] with a dotted question mark; the text is shown by the #bpTipBox handlers below
-    const tip = (text) => '<span class="bpTip" data-tip="' + text + '">[<span class="bpQ">?</span>]</span>';
-    const settingsHtml = (v) =>
+    // ------------------------------------------------------------ quick settings (backpack only)
+    // Only what belongs to the backpack is here, with a Save button. Everything else is in the FST tab of the preferences page
+    // (the link at the bottom). The pieces of the form are shared with that tab (see "settings UI" below).
+    const bpPopupHtml = (v) =>
       '<div id="bpSettingsWin">' +
-      '<div class="bpSetH">Item type filter ' + tip('New shows how many items each type has and dims the types you have none of. Original keeps the game&#39;s own icons.') + '</div>' +
-      '<label class="bpCbLabel"><input type="radio" class="bpCb" name="bpSetType" value="new"' + (v.typeStyle === 'new' ? ' checked' : '') + '>New: item counts, empty types dimmed</label><br>' +
-      '<label class="bpCbLabel"><input type="radio" class="bpCb" name="bpSetType" value="old"' + (v.typeStyle === 'old' ? ' checked' : '') + '>Original: the game\'s own icons</label>' +
-      '<div class="bpSetH">Filters ' + tip('Drag a filter to the other area, or click it. Always visible filters are shown at all times; the others appear when you press &quot;Advanced filters&quot; (the button is hidden when nothing is advanced). The game&#39;s own search box and Filters panel (level, set, sort) are always there.') + '</div>' +
-      '<div class="bpZoneT">Always visible</div><div class="bpZone" id="bpZoneAlways" data-zone="a" data-empty="Drop filters here"></div>' +
-      '<div class="bpZoneT">Advanced filters</div><div class="bpZone" id="bpZoneAdv" data-zone="v" data-empty="Drop filters here"></div>' +
-      '<div class="bpSetH">Display</div>' +
-      '<div class="bpZoneT">Items per page</div>' + choiceHtml('perPage', PER_PAGE_CHOICES, v.perPage, '') +
-      '<div class="bpZoneT">Item size ' + tip('Scales the item icons in the backpack. Smaller icons fit more on the screen.') + '</div>' + choiceHtml('size', SIZE_CHOICES, v.size, '%') +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetEmpty"' + (v.empty ? ' checked' : '') + '><span class="bpSlider"></span>Show empty slots</label> ' + tip('Fills the last page with empty slots, up to the number of items per page.') + '</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetModernPager"' + (v.modernPager ? ' checked' : '') + '><span class="bpSlider"></span>Modern pagination</label> ' + tip('Rounded page buttons. The &quot;&lt;&quot; and &quot;&gt;&quot; buttons stay in place and are greyed out when there is no previous or next page, instead of disappearing. Also adds a copy of the page buttons above the items.') + '</div>' +
-      '<div class="bpSetH">Locked items</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetLockUse"' + (v.lockUse ? ' checked' : '') + '><span class="bpSlider"></span>Locked items cannot be used</label> ' + tip('A locked item is always protected from Destroy and Break Down. With this on it also cannot be used (potions and other usable items), so you have to unlock it first. Equipping is never blocked.') + '</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetLockExtract"' + (v.lockExtract ? ' checked' : '') + '><span class="bpSlider"></span>Block extracting</label> ' + tip('With this on, a locked item cannot be extracted (components), and Extract All is refused when any item of that type is locked.') + '</div>' +
-      '<div class="bpSetH">Automatic break down</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetAutoBreak"' + (v.autoBreak ? ' checked' : '') + '><span class="bpSlider"></span>Break down items automatically</label> ' + tip('On every game page, every 5 seconds, every piece of equipment (helmet, armor, gloves, boots, weapon, shield, ring, amulet, rune) that matches the rarities and levels below is broken down. Locked, bound and guild tagged items and containers are never touched. Breaking down cannot be undone.') + '</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetAutoBreakDry"' + (v.autoBreakDry ? ' checked' : '') + '><span class="bpSlider"></span>Dry run</label> ' + tip('Nothing is broken down: the items that would be are listed in the browser console (F12) instead.') + '</div>' +
-      [[0, 'Common'], [1, 'Rare'], [2, 'Unique']].map((r) => '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" class="bpAbRar" data-r="' + r[0] + '"' + (v.autoBreakRar.indexOf(r[0]) !== -1 ? ' checked' : '') + '><span class="bpSlider"></span>' + r[1] + ' items</label></div>').join('') +
-      '<div class="bpZoneT">Level range ' + tip('Only items from this minimum to this maximum level are broken down. Leave a box empty for no limit.') + '</div>' +
-      '<div class="bpSwRow">Min <input type="number" min="0" id="bpSetAbMin" class="bpAbLvl" value="' + (v.autoBreakMin === null ? '' : v.autoBreakMin) + '"> Max <input type="number" min="0" id="bpSetAbMax" class="bpAbLvl" value="' + (v.autoBreakMax === null ? '' : v.autoBreakMax) + '"></div>' +
-      '<div class="bpSwRow"><a href="#" id="bpAbLogBtn">View the log of broken down items</a></div>' +
-      '<div class="bpSetH">Pop-ups</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetQuickBuff"' + (v.quickBuffPopup ? ' checked' : '') + '><span class="bpSlider"></span>Open Quick Buff in a pop-up</label> ' + tip('Instead of a separate browser window, Quick Buff opens in a window on the page that you can drag around.') + '</div>' +
-      '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox" id="bpSetQuickBuffInfo"' + (v.quickBuffInfo ? ' checked' : '') + '><span class="bpSlider"></span>Buff information in the pop-up</label> ' + tip('In the Quick Buff pop-up: your Sustain and Fury Caster enhancements, whether Guild Buffer, Buff Master, Extend and Reinforce are on, the buffs a target already has (with their level) next to each buff, and the last activity and stamina of the target.') + '</div>' +
+      part.type(v) + part.filters() + part.display(v) + part.locks(v) +
+      '<div class="bpSwRow bpMore"><a href="' + esc(withFst('/index.php?cmd=settings')) + '#fstSettings">More settings</a></div>' +
       '</div>';
 
     let gameDraggable = false;
@@ -1087,47 +1059,15 @@
       $('#dialog_msg').closest('.ui-dialog').removeClass('bpSettingsDlg').find('.bpSetX').remove();
       $('#bpTipBox').hide();
     }
-    // tooltip for the [?] marks; one box in the page, so the settings window cannot clip it
-    $(document).on('mouseenter', '.bpTip', function () {
-      let $b = $('#bpTipBox');
-      if (!$b.length) $b = $('<div id="bpTipBox"></div>').appendTo('body');
-      const r = this.getBoundingClientRect();
-      $b.text(this.getAttribute('data-tip')).show();
-      const w = $b.outerWidth();
-      $b.css({ left: Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8)), top: r.bottom + 6 });
-    });
-    $(document).on('mouseleave', '.bpTip', () => $('#bpTipBox').hide());
     function openSettings() {
+      ensureSetCss();
       draftAlways = new Set(SET.always);
+      onSettingEdit = null;
       const buttons = [
         {
           text: 'Save',
           click: function () {
-            const next = {
-              autoBreak: $('#bpSetAutoBreak').prop('checked'),
-              autoBreakDry: $('#bpSetAutoBreakDry').prop('checked'),
-              autoBreakRar: $('.bpAbRar:checked').map(function () { return parseInt($(this).attr('data-r'), 10); }).get(),
-              autoBreakMin: lvlOrNull($('#bpSetAbMin').val()),
-              autoBreakMax: lvlOrNull($('#bpSetAbMax').val()),
-            };
-            if (next.autoBreak && !next.autoBreakDry && next.autoBreakRar.length) {
-              const n = autoBreakMatches(bp.srcData, next, isLocked).length;
-              if (n && !window.confirm('Automatic break down is on: ' + n + ' item' + (n === 1 ? '' : 's') + ' in your backpack match and will be broken down as soon as you save. This cannot be undone. Continue?')) return;
-            }
-            SET = {
-              ...next,
-              typeStyle: $('input[name=bpSetType]:checked').val() === 'old' ? 'old' : 'new',
-              always: FILTERS.map((f) => f[0]).filter((k) => draftAlways.has(k)),
-              perPage: choiceVal('perPage', DEFAULT_SETTINGS.perPage),
-              size: choiceVal('size', DEFAULT_SETTINGS.size),
-              empty: $('#bpSetEmpty').prop('checked'),
-              modernPager: $('#bpSetModernPager').prop('checked'),
-              lockUse: $('#bpSetLockUse').prop('checked'),
-              lockExtract: $('#bpSetLockExtract').prop('checked'),
-              quickBuffPopup: $('#bpSetQuickBuff').prop('checked'),
-              quickBuffInfo: $('#bpSetQuickBuffInfo').prop('checked'),
-            };
-            saveSettings(SET);
+            SET = mergeSettings(readBackpack());
             $(this).dialog('close');
             applySettings();
           },
@@ -1136,14 +1076,14 @@
           text: 'Defaults',
           click: function () {
             draftAlways = new Set(DEFAULT_SETTINGS.always);
-            $('#bpSetBody').html(settingsHtml(DEFAULT_SETTINGS));
+            $('#bpSetBody').html(bpPopupHtml(DEFAULT_SETTINGS));
             renderZones();
           },
         },
         { text: 'Cancel', click: function () { $(this).dialog('close'); } },
       ];
       try { gameDraggable = $('#dialog_msg').dialog('option', 'draggable'); } catch (e) { /* keep the last value */ }
-      openDialog({ title: 'Toolkit settings', buttons, width: 440, draggable: true, close: settingsClosed },'<div id="bpSetBody">' + settingsHtml(SET) + '</div>');
+      openDialog({ title: 'Backpack settings', buttons, width: 440, draggable: true, close: settingsClosed },'<div id="bpSetBody">' + bpPopupHtml(SET) + '</div>');
       renderZones();
       // the page behind stays where it is while the window is open
       const gap = window.innerWidth - document.documentElement.clientWidth;
@@ -1166,10 +1106,6 @@
       bp.page = 0;
       bp._applyFilter(); // redraws the grid and the type icons
     }
-    function moveChip(key, toAlways) {
-      if (toAlways) draftAlways.add(key); else draftAlways.delete(key);
-      renderZones();
-    }
     $(document).on('click', '#bpSettingsBtn', (e) => {
       e.preventDefault();
       openSettings();
@@ -1182,44 +1118,6 @@
       $b.addClass('bp-spin');
       bp._loadData();
       setTimeout(() => $b.removeClass('bp-spin'), 1200);
-    });
-    // Drag and drop between the two areas; a click moves the chip too (touch screens).
-    let dragKey = null;
-    $(document).on('dragstart', '.bpChip', function (e) {
-      dragKey = $(this).attr('data-f');
-      e.originalEvent.dataTransfer.setData('text/plain', dragKey);
-      e.originalEvent.dataTransfer.effectAllowed = 'move';
-      $(this).addClass('bpDragging');
-    });
-    $(document).on('dragend', '.bpChip', function () {
-      $(this).removeClass('bpDragging');
-      $('.bpZone').removeClass('bpOver');
-    });
-    $(document).on('dragover', '.bpZone', function (e) {
-      e.preventDefault();
-      e.originalEvent.dataTransfer.dropEffect = 'move';
-      $(this).addClass('bpOver');
-    });
-    $(document).on('dragleave', '.bpZone', function (e) {
-      if (!this.contains(e.originalEvent.relatedTarget)) $(this).removeClass('bpOver');
-    });
-    $(document).on('drop', '.bpZone', function (e) {
-      e.preventDefault();
-      $(this).removeClass('bpOver');
-      if (dragKey) moveChip(dragKey, $(this).attr('data-zone') === 'a');
-      dragKey = null;
-    });
-    $(document).on('click keydown', '.bpChoice', function (e) {
-      if (e.type === 'keydown') {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-      }
-      $('.bpChoice[data-g="' + $(this).attr('data-g') + '"]').removeClass('bp-on');
-      $(this).addClass('bp-on');
-    });
-    $(document).on('click', '.bpChip', function () {
-      const key = $(this).attr('data-f');
-      moveChip(key, !draftAlways.has(key));
     });
 
     // If the data was already loaded before we patched, redraw once so our filters apply to what is on screen.
@@ -1298,45 +1196,15 @@
           '#bpSettingsWin{text-align:left;}#bpSettingsWin .bpCbLabel{margin:2px 0;}' +
           '.bpCb[type=radio]{border-radius:50%;}' +
           '.bpCb[type=radio]:checked::after{left:3px;top:3px;width:6px;height:6px;border:0;border-radius:50%;background:#2f4a08;transform:none;}' +
-          '.bpSetH{margin:10px 0 4px;font-weight:bold;border-bottom:1px solid rgba(138,106,58,.6);}' +
-          '.bpSwRow{display:flex;align-items:center;gap:6px;margin:3px 0;}' +
-          '.bpSwitch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;}' +
-          '.bpSwitch input{position:absolute;opacity:0;width:0;height:0;}' +
-          '.bpSlider{cursor:pointer;position:relative;flex:none;width:34px;height:18px;box-sizing:border-box;border:1px solid #6a5333;border-radius:9px;' +
-          'background:#3b2f20;transition:background .15s,border-color .15s;}' +
-          '.bpSlider::before{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#bfae8c;' +
-          'transition:transform .15s,background .15s;}' +
-          '.bpSwitch input:checked + .bpSlider{background:#b9832a;border-color:#e0b252;}' +
-          '.bpSwitch input:checked + .bpSlider::before{transform:translateX(16px);background:#fff6dc;}' +
-          '.bpSwitch input:focus-visible + .bpSlider{outline:1px dotted #e0b252;outline-offset:2px;}' +
-          '.bpTip{margin-left:2px;font-weight:normal;cursor:help;}.bpTip .bpQ{border-bottom:1px dotted currentColor;}' +
-          '#bpTipBox{display:none;position:fixed;z-index:100000;max-width:260px;padding:6px 9px;border:1px solid #8a6a3a;border-radius:6px;' +
-          'background:#2b2217;color:#f1e3c0;font:12px/1.4 Arial,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.5);pointer-events:none;}' +
           'html.bpNoScroll,html.bpNoScroll body{overflow:hidden !important;}' +
           '.bpSettingsDlg .ui-dialog-titlebar-close{display:none !important;}' +
           '.bpSettingsDlg .ui-dialog-titlebar{position:relative;}' +
           '.bpSetX{position:absolute;top:2px;right:6px;width:28px;height:28px;padding:0;border:1px solid transparent;border-radius:6px;' +
           'background:transparent;color:#f3e3b8;font-size:26px;font-weight:bold;line-height:1;cursor:pointer;opacity:1;}' +
           '.bpSetX:hover{background:rgba(224,178,82,.25);border-color:#e0b252;color:#fff;}' +
-          '.bpZoneT{margin:6px 0 2px;font-size:11px;font-weight:bold;}' +
-          '.bpAbLvl{width:70px;margin:0 8px 0 4px;}' +
-          '#bpAbLogWin{position:fixed;z-index:100000;right:20px;top:80px;width:380px;background:#1a160e;border:1px solid #6b5a33;border-radius:4px;color:#e0c493;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.6)}' +
-          '#bpAbLogWin .bpAbBar{display:flex;justify-content:space-between;padding:6px 10px;background:#2b2417;font-weight:bold}#bpAbLogWin a{color:#f0c75e;margin-left:8px;text-decoration:none}' +
-          '#bpAbLogWin .bpAbBody{max-height:320px;overflow-y:auto;padding:4px 10px}#bpAbLogWin .bpAbRow{padding:3px 0;border-bottom:1px solid #2b2417}.bpAbT,.bpAbL{color:#9a8c6a}.bpAbF{color:#e0c493}' +
-          '#bpAbLogWin .bpAbBody::-webkit-scrollbar{width:12px}#bpAbLogWin .bpAbBody::-webkit-scrollbar-track{background:#0f0d09;border-left:1px solid #2b2417}' +
-          '#bpAbLogWin .bpAbBody::-webkit-scrollbar-thumb{background:#6b5a33;border-radius:6px;border:3px solid #0f0d09}#bpAbLogWin .bpAbBody::-webkit-scrollbar-thumb:hover{background:#8d7646}' +
-          '.bpZone{min-height:34px;box-sizing:border-box;padding:4px 4px 0;border:2px dashed #8a6a3a;border-radius:4px;background:rgba(0,0,0,.06);}' +
-          '.bpZone:empty::before{content:attr(data-empty);display:block;padding:4px 2px;font-size:11px;opacity:.6;}' +
-          '.bpZone.bpOver{background:rgba(200,220,134,.35);border-color:#4f6f12;}' +
-          '.bpChip{display:inline-block;margin:0 4px 4px 0;padding:3px 8px;cursor:grab;user-select:none;-webkit-user-select:none;' +
-          'font:bold 11px Arial,sans-serif;color:#3a2a12;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;}' +
-          '.bpChoice{display:inline-block;min-width:34px;box-sizing:border-box;margin:0 4px 4px 0;padding:3px 8px;text-align:center;cursor:pointer;' +
-          'user-select:none;-webkit-user-select:none;font:bold 11px Arial,sans-serif;color:#3a2a12;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;}' +
-          '.bpChoice:hover{background:#f0e3bf;}.bpChoice.bp-on{background:#c8dc86;border-color:#4f6f12;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}' +
           // the game's grid is 5 columns of 64px; zoomed out it gets more columns so it still fills the width
           'body.bpSize50 .backpackTabContent{zoom:.5;grid-template-columns:repeat(10,64px);}' +
           'body.bpSize75 .backpackTabContent{zoom:.75;grid-template-columns:repeat(6,64px);}' +
-          '.bpChip:hover{background:#f0e3bf;}.bpChip.bpDragging{opacity:.4;}' +
           '.bpToggle{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;' +
           // same look as the game's .custombutton (the paper texture is copied from #bpClearAll at run time, see paintToggleSkin)
           'min-width:26px;height:20px;padding:1px 6px;margin:0 5px 6px 0;vertical-align:middle;cursor:pointer;' +
@@ -1515,14 +1383,14 @@
         const $d = $(this);
         const id = $d.attr('data-invid');
         if (!id) return;
-        const $mine = $d.next('.bpFrag');
+        const $mine = $d.nextAll('.bpUse').first();
         if ($mine.length) {
           // list reused with a new item
-          if ($mine.attr('data-invid') !== id) $mine.attr('data-invid', id).next('.bpUse').attr('data-invid', id);
+          if ($mine.attr('data-invid') !== id) $d.nextAll('.bpFrag, .bpUse').attr('data-invid', id);
           return;
         }
         $d.after(
-          '<a href="#" class="bpFrag tip-static" data-tipped="Break down?" data-invid="' + esc(id) + '"></a>' +
+          (loadSettings().breakBtn ? '<a href="#" class="bpFrag tip-static" data-tipped="Break down?" data-invid="' + esc(id) + '"></a>' : '') +
           '<a href="#" class="bpUse tip-static" data-tipped="Use?" data-invid="' + esc(id) + '"></a>'
         );
       });
@@ -1984,7 +1852,7 @@
       const $pop = $(
         '<div id="bpPopup"><div class="bpPopBox"><div class="bpPopBar"><span class="bpPopTitle">Backpack</span>' +
         '<span class="bpPopTools"><a data-act="folders">Folders</a><a data-act="manage">Manage</a>' +
-        '<span data-act="refresh" title="Refresh bag">↻</span><span data-act="gear" title="Toolkit settings">⚙</span>' +
+        '<span data-act="refresh" title="Refresh bag">↻</span><span data-act="gear" title="Backpack settings">⚙</span>' +
         '<span class="bpPopX" role="button" title="Close">×</span></span></div>' +
         '<div class="bpPopBody">' + body + '</div></div></div>'
       ).appendTo('body');
@@ -2395,6 +2263,7 @@
   // A "W" button at the end of the helper's own buttons beside the map (#fshWorldButtonContainer, which FallenSwordHelper adds a
   // moment after the page loads), or next to the area name when there are none. It opens the wiki page of the map you are on now.
   function initWikiButton() {
+    if (!loadSettings().wikiBtn) return;
     const WIKI = 'https://wiki.fallensword.com/index.php/';
     const mapName = () => {
       try { return (window.GameData.realm().name || '').trim(); } catch (e) { return ''; }
@@ -2629,7 +2498,7 @@
   })();
   // <<< route.js
   function initPathfinder() {
-    if (!/[?&]cmd=world(&|$)/.test(location.search)) return;
+    if (!/[?&]cmd=world(&|$)/.test(location.search) || !loadSettings().pfEnabled) return;
     const dataUrl = () => recall('pathfinderUrl') || PF_SITE + 'route.json';
     const pf = {
       open: recall('pathfinderOpen') === '1',
@@ -3465,6 +3334,290 @@
     if (navigator.locks && navigator.locks.request) navigator.locks.request('fsb-autobreak', { ifAvailable: true }, (lock) => (lock ? autoBreak() : undefined));
     else autoBreak();
   }, 5000);
+
+  // ---------------------------------------------------------------- settings UI
+  // The settings are shown in two places: the quick settings of the backpack (only what belongs to the backpack, with a Save button)
+  // and the FST tab of the preferences page (everything, each change is saved at once). Both are built from the same pieces.
+  const SET_UI_CSS =
+    '.bpMore{margin-top:12px;}' +
+    '.bpSetH{margin:10px 0 4px;font-weight:bold;border-bottom:1px solid rgba(138,106,58,.6);}' +
+    '.bpSwRow{display:flex;align-items:center;gap:6px;margin:3px 0;}' +
+    '.bpSwitch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;}' +
+    '.bpSwitch input{position:absolute;opacity:0;width:0;height:0;}' +
+    '.bpSlider{cursor:pointer;position:relative;flex:none;width:34px;height:18px;box-sizing:border-box;border:1px solid #6a5333;border-radius:9px;' +
+    'background:#3b2f20;transition:background .15s,border-color .15s;}' +
+    '.bpSlider::before{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#bfae8c;' +
+    'transition:transform .15s,background .15s;}' +
+    '.bpSwitch input:checked + .bpSlider{background:#b9832a;border-color:#e0b252;}' +
+    '.bpSwitch input:checked + .bpSlider::before{transform:translateX(16px);background:#fff6dc;}' +
+    '.bpSwitch input:focus-visible + .bpSlider{outline:1px dotted #e0b252;outline-offset:2px;}' +
+    '.bpTip{margin-left:2px;font-weight:normal;cursor:help;}.bpTip .bpQ{border-bottom:1px dotted currentColor;}' +
+    '#bpTipBox{display:none;position:fixed;z-index:100000;max-width:260px;padding:6px 9px;border:1px solid #8a6a3a;border-radius:6px;' +
+    'background:#2b2217;color:#f1e3c0;font:12px/1.4 Arial,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.5);pointer-events:none;}' +
+    '.bpZoneT{margin:6px 0 2px;font-size:11px;font-weight:bold;}' +
+    '.bpAbLvl{width:70px;margin:0 8px 0 4px;}' +
+    '#bpAbLogWin{position:fixed;z-index:100000;right:20px;top:80px;width:380px;background:#1a160e;border:1px solid #6b5a33;border-radius:4px;color:#e0c493;font-size:12px;box-shadow:0 4px 18px rgba(0,0,0,.6)}' +
+    '#bpAbLogWin .bpAbBar{display:flex;justify-content:space-between;padding:6px 10px;background:#2b2417;font-weight:bold}#bpAbLogWin a{color:#f0c75e;margin-left:8px;text-decoration:none}' +
+    '#bpAbLogWin .bpAbBody{max-height:320px;overflow-y:auto;padding:4px 10px}#bpAbLogWin .bpAbRow{padding:3px 0;border-bottom:1px solid #2b2417}.bpAbT,.bpAbL{color:#9a8c6a}.bpAbF{color:#e0c493}' +
+    '#bpAbLogWin .bpAbBody::-webkit-scrollbar{width:12px}#bpAbLogWin .bpAbBody::-webkit-scrollbar-track{background:#0f0d09;border-left:1px solid #2b2417}' +
+    '#bpAbLogWin .bpAbBody::-webkit-scrollbar-thumb{background:#6b5a33;border-radius:6px;border:3px solid #0f0d09}#bpAbLogWin .bpAbBody::-webkit-scrollbar-thumb:hover{background:#8d7646}' +
+    '.bpZone{min-height:34px;box-sizing:border-box;padding:4px 4px 0;border:2px dashed #8a6a3a;border-radius:4px;background:rgba(0,0,0,.06);}' +
+    '.bpZone:empty::before{content:attr(data-empty);display:block;padding:4px 2px;font-size:11px;opacity:.6;}' +
+    '.bpZone.bpOver{background:rgba(200,220,134,.35);border-color:#4f6f12;}' +
+    '.bpChip{display:inline-block;margin:0 4px 4px 0;padding:3px 8px;cursor:grab;user-select:none;-webkit-user-select:none;' +
+    'font:bold 11px Arial,sans-serif;color:#3a2a12;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;}' +
+    '.bpChoice{display:inline-block;min-width:34px;box-sizing:border-box;margin:0 4px 4px 0;padding:3px 8px;text-align:center;cursor:pointer;' +
+    'user-select:none;-webkit-user-select:none;font:bold 11px Arial,sans-serif;color:#3a2a12;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;}' +
+    '.bpChoice:hover{background:#f0e3bf;}.bpChoice.bp-on{background:#c8dc86;border-color:#4f6f12;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}' +
+    '.bpChip:hover{background:#f0e3bf;}.bpChip.bpDragging{opacity:.4;}' +
+    '';
+  function ensureSetCss() {
+    if (!$('#bpSetCss').length) $('head').append('<style id="bpSetCss">' + SET_UI_CSS + '</style>');
+  }
+  let draftAlways = new Set(); // the filters in "always visible" while the form is open
+  let onSettingEdit = null; // the FST tab sets this: called after a filter was moved or a choice was clicked
+  // [?] with a dotted question mark; the text is shown by the #bpTipBox handlers below
+  const tip = (text) => '<span class="bpTip" data-tip="' + text + '">[<span class="bpQ">?</span>]</span>';
+  const sw = (id, on, label, help, attrs) =>
+    '<div class="bpSwRow"><label class="bpSwitch"><input type="checkbox"' + (id ? ' id="' + id + '"' : '') + (attrs || '') + (on ? ' checked' : '') + '><span class="bpSlider"></span>' + label + '</label>' + (help ? ' ' + tip(help) : '') + '</div>';
+  const choiceHtml = (group, values, cur, unit) =>
+    '<div>' + values.map((n) => '<span class="bpChoice' + (n === cur ? ' bp-on' : '') + '" data-g="' + group + '" data-v="' + n + '" role="button" tabindex="0">' + n + unit + '</span>').join('') + '</div>';
+  const choiceVal = (group, fallback) => {
+    const n = parseInt($('.bpChoice[data-g="' + group + '"].bp-on').attr('data-v'), 10);
+    return isNaN(n) ? fallback : n;
+  };
+  const chipsHtml = (inZone) =>
+    FILTERS.filter((f) => draftAlways.has(f[0]) === inZone)
+      .map((f) => '<span class="bpChip" draggable="true" data-f="' + f[0] + '" title="Drag to the other area (or click to move it)">' + f[1] + '</span>')
+      .join('');
+  function renderZones() {
+    $('#bpZoneAlways').html(chipsHtml(true));
+    $('#bpZoneAdv').html(chipsHtml(false));
+  }
+  function moveChip(key, toAlways) {
+    if (toAlways) draftAlways.add(key); else draftAlways.delete(key);
+    renderZones();
+    if (onSettingEdit) onSettingEdit();
+  }
+
+  // the pieces of the forms
+  const part = {
+    type: (v) =>
+      '<div class="bpSetH">Item type filter</div>' +
+      sw('bpSetType', v.typeStyle === 'new', 'Item counts on the type icons', 'On shows how many items each type has and dims the types you have none of. Off keeps the game&#39;s own icons.'),
+    filters: () =>
+      '<div class="bpSetH">Filters ' + tip('Drag a filter to the other area, or click it. Always visible filters are shown at all times; the others appear when you press &quot;Advanced filters&quot; (the button is hidden when nothing is advanced). The game&#39;s own search box and Filters panel (level, set, sort) are always there.') + '</div>' +
+      '<div class="bpZoneT">Always visible</div><div class="bpZone" id="bpZoneAlways" data-zone="a" data-empty="Drop filters here"></div>' +
+      '<div class="bpZoneT">Advanced filters</div><div class="bpZone" id="bpZoneAdv" data-zone="v" data-empty="Drop filters here"></div>',
+    display: (v) =>
+      '<div class="bpSetH">Display</div>' +
+      '<div class="bpZoneT">Items per page ' + tip('How many items the backpack shows on one page.') + '</div>' + choiceHtml('perPage', PER_PAGE_CHOICES, v.perPage, '') +
+      '<div class="bpZoneT">Item size ' + tip('Scales the item icons in the backpack. Smaller icons fit more on the screen.') + '</div>' + choiceHtml('size', SIZE_CHOICES, v.size, '%') +
+      sw('bpSetEmpty', v.empty, 'Show empty slots', 'Fills the last page with empty slots, up to the number of items per page.') +
+      sw('bpSetModernPager', v.modernPager, 'Modern pagination', 'Rounded page buttons. The &quot;&lt;&quot; and &quot;&gt;&quot; buttons stay in place and are greyed out when there is no previous or next page, instead of disappearing. Also adds a copy of the page buttons above the items.'),
+    locks: (v) =>
+      '<div class="bpSetH">Locked items</div>' +
+      sw('bpSetLockUse', v.lockUse, 'Locked items cannot be used', 'A locked item is always protected from Destroy and Break Down. With this on it also cannot be used (potions and other usable items), so you have to unlock it first. Equipping is never blocked.') +
+      sw('bpSetLockExtract', v.lockExtract, 'Block extracting', 'With this on, a locked item cannot be extracted (components), and Extract All is refused when any item of that type is locked.'),
+    autoBreak: (v) =>
+      '<div class="bpSetH">Automatic break down</div>' +
+      sw('bpSetAutoBreak', v.autoBreak, 'Break down items automatically', 'On every game page, every 5 seconds, every piece of equipment (helmet, armor, gloves, boots, weapon, shield, ring, amulet, rune) that matches the rarities and levels below is broken down. Locked, bound and guild tagged items and containers are never touched. Breaking down cannot be undone.') +
+      sw('bpSetAutoBreakDry', v.autoBreakDry, 'Dry run', 'Nothing is broken down: the items that would be are listed in the browser console (F12) instead.') +
+      [[0, 'Common'], [1, 'Rare'], [2, 'Unique']].map((r) => sw('', v.autoBreakRar.indexOf(r[0]) !== -1, r[1] + ' items', 'Equipment of this rarity is broken down.', ' class="bpAbRar" data-r="' + r[0] + '"')).join('') +
+      '<div class="bpZoneT">Level range ' + tip('Only items from this minimum to this maximum level are broken down. Leave a box empty for no limit.') + '</div>' +
+      '<div class="bpSwRow">Min <input type="number" min="0" id="bpSetAbMin" class="bpAbLvl" value="' + (v.autoBreakMin === null ? '' : v.autoBreakMin) + '"> Max <input type="number" min="0" id="bpSetAbMax" class="bpAbLvl" value="' + (v.autoBreakMax === null ? '' : v.autoBreakMax) + '"></div>' +
+      '<div class="bpSwRow"><a href="#" id="bpAbLogBtn">View the log of broken down items</a> ' + tip('Every item that was broken down automatically, with the fragments it gave. The last 300 are kept.') + '</div>',
+    quickBuff: (v) =>
+      '<div class="bpSetH">Quick Buff</div>' +
+      sw('bpSetQuickBuff', v.quickBuffPopup, 'Open Quick Buff in a pop-up', 'Instead of a separate browser window, Quick Buff opens in a window on the page that you can drag around.') +
+      sw('bpSetQuickBuffInfo', v.quickBuffInfo, 'Buff information in the pop-up', 'In the Quick Buff pop-up: your Sustain and Fury Caster enhancements, whether Guild Buffer, Buff Master, Extend and Reinforce are on, the buffs a target already has (with their level) next to each buff, and the last activity and stamina of the target.'),
+    map: (v) =>
+      '<div class="bpSetH">World map</div>' +
+      sw('fstBreakBtn', v.breakBtn, 'Quick Breakdown Button', 'A small hammer next to the loot you get from creatures in the action list: it breaks the item down instead of destroying it. Shown from the next page load.') +
+      sw('fstWikiBtn', v.wikiBtn, 'Map Wiki button', 'A &quot;W&quot; button on the world page that opens the wiki page of the map you are on. Shown from the next page load.'),
+    pf: (v) =>
+      '<div class="bpSetH">Path Finder</div>' +
+      sw('fstPfOn', v.pfEnabled, 'Path Finder', 'The Path Finder button on the world page, which opens a panel that shows the way to any area, step by step. Shown from the next page load.') +
+      sw('fstPfWays', recall('pathfinderWaysOnly') === '1', 'Only the Cathedral of Ways portal', 'All the other portals, except the one in the Cathedral of Ways, are ignored when working out the way. Same as the switch in the Path Finder panel.'),
+  };
+  // what the forms hold (a piece that is not on the screen is not read)
+  const chk = (id, was) => { const $e = $('#' + id); return $e.length ? $e.prop('checked') : was; };
+  const readBackpack = () => ({
+    typeStyle: $('#bpSetType').prop('checked') ? 'new' : 'old',
+    always: FILTERS.map((f) => f[0]).filter((k) => draftAlways.has(k)),
+    perPage: choiceVal('perPage', DEFAULT_SETTINGS.perPage),
+    size: choiceVal('size', DEFAULT_SETTINGS.size),
+    empty: $('#bpSetEmpty').prop('checked'),
+    modernPager: $('#bpSetModernPager').prop('checked'),
+    lockUse: $('#bpSetLockUse').prop('checked'),
+    lockExtract: $('#bpSetLockExtract').prop('checked'),
+  });
+  const readOthers = (was) => ({
+    autoBreak: chk('bpSetAutoBreak', was.autoBreak),
+    autoBreakDry: chk('bpSetAutoBreakDry', was.autoBreakDry),
+    autoBreakRar: $('#bpSetAutoBreak').length ? $('.bpAbRar:checked').map(function () { return parseInt($(this).attr('data-r'), 10); }).get() : was.autoBreakRar,
+    autoBreakMin: $('#bpSetAbMin').length ? lvlOrNull($('#bpSetAbMin').val()) : was.autoBreakMin,
+    autoBreakMax: $('#bpSetAbMax').length ? lvlOrNull($('#bpSetAbMax').val()) : was.autoBreakMax,
+    quickBuffPopup: chk('bpSetQuickBuff', was.quickBuffPopup),
+    quickBuffInfo: chk('bpSetQuickBuffInfo', was.quickBuffInfo),
+    breakBtn: chk('fstBreakBtn', was.breakBtn),
+    wikiBtn: chk('fstWikiBtn', was.wikiBtn),
+    pfEnabled: chk('fstPfOn', was.pfEnabled),
+  });
+
+  // tooltip for the [?] marks; one box in the page, so a window cannot clip it
+  $(document).on('mouseenter', '.bpTip', function () {
+    let $b = $('#bpTipBox');
+    if (!$b.length) $b = $('<div id="bpTipBox"></div>').appendTo('body');
+    const r = this.getBoundingClientRect();
+    $b.text(this.getAttribute('data-tip')).show();
+    const w = $b.outerWidth();
+    $b.css({ left: Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8)), top: r.bottom + 6 });
+  });
+  $(document).on('mouseleave', '.bpTip', () => $('#bpTipBox').hide());
+  // Drag and drop between the two areas; a click moves the chip too (touch screens).
+  let dragKey = null;
+  $(document).on('dragstart', '.bpChip', function (e) {
+    dragKey = $(this).attr('data-f');
+    e.originalEvent.dataTransfer.setData('text/plain', dragKey);
+    e.originalEvent.dataTransfer.effectAllowed = 'move';
+    $(this).addClass('bpDragging');
+  });
+  $(document).on('dragend', '.bpChip', function () {
+    $(this).removeClass('bpDragging');
+    $('.bpZone').removeClass('bpOver');
+  });
+  $(document).on('dragover', '.bpZone', function (e) {
+    e.preventDefault();
+    e.originalEvent.dataTransfer.dropEffect = 'move';
+    $(this).addClass('bpOver');
+  });
+  $(document).on('dragleave', '.bpZone', function (e) {
+    if (!this.contains(e.originalEvent.relatedTarget)) $(this).removeClass('bpOver');
+  });
+  $(document).on('drop', '.bpZone', function (e) {
+    e.preventDefault();
+    $(this).removeClass('bpOver');
+    if (dragKey) moveChip(dragKey, $(this).attr('data-zone') === 'a');
+    dragKey = null;
+  });
+  $(document).on('click keydown', '.bpChoice', function (e) {
+    if (e.type === 'keydown') {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+    }
+    $('.bpChoice[data-g="' + $(this).attr('data-g') + '"]').removeClass('bp-on');
+    $(this).addClass('bp-on');
+    if (onSettingEdit) onSettingEdit();
+  });
+  $(document).on('click', '.bpChip', function () {
+    const key = $(this).attr('data-f');
+    moveChip(key, !draftAlways.has(key));
+  });
+
+  // ---------------------------------------------------------------- the FST tab of the preferences page
+  // Every setting of the script, in categories. Each change is saved at once (like the tabs of the other scripts), except that
+  // turning on the automatic break down first shows how many items would go. Needs the tabs of the game's own preferences page.
+  function initFstTab() {
+    if (!/[?&]cmd=settings(&|$)/.test(location.search)) return;
+    const CATS = [['general', 'General'], ['backpack', 'Backpack'], ['break', 'Break down'], ['map', 'Map'], ['pf', 'Path Finder']];
+    const panel = (c, v) => ({
+      general: part.quickBuff(v) +
+        '<div class="bpSetH">All settings</div><div class="bpSwRow"><a href="#" id="fstReset">Restore the default settings</a> ' + tip('Puts every setting of the Fallen Sword Toolkit back to how it was when you installed it. Item locks and the log are kept.') + '</div>',
+      backpack: part.type(v) + part.filters() + part.display(v) + part.locks(v),
+      break: part.autoBreak(v),
+      map: part.map(v),
+      pf: part.pf(v),
+    }[c]);
+    let cat = recall('fstCat');
+    if (!CATS.some((c) => c[0] === cat)) cat = CATS[0][0];
+    const msg = (t) => { $('#fstMsg').text(t); };
+    function render() {
+      const v = loadSettings();
+      draftAlways = new Set(v.always);
+      $('#fstBody').html(
+        '<div class="fstNav">' + CATS.map((c) => '<span class="fstCat' + (c[0] === cat ? ' bp-on' : '') + '" data-c="' + c[0] + '" role="button" tabindex="0">' + c[1] + '</span>').join('') + '</div>' +
+        CATS.map((c) => '<div class="fstPanel" data-c="' + c[0] + '"' + (c[0] === cat ? '' : ' style="display:none"') + '>' + panel(c[0], v) + '</div>').join(''));
+      renderZones();
+    }
+    let busy = false;
+    async function save() {
+      if (busy) return;
+      busy = true;
+      try {
+        const cur = loadSettings();
+        const patch = Object.assign({}, readBackpack(), readOthers(cur));
+        const next = Object.assign({}, cur, patch);
+        const same = ['autoBreak', 'autoBreakDry', 'autoBreakMin', 'autoBreakMax'].every((k) => cur[k] === next[k]) && cur.autoBreakRar.join() === next.autoBreakRar.join();
+        if (!same && next.autoBreak && !next.autoBreakDry && next.autoBreakRar.length) {
+          const items = await fetchBag();
+          const locked = abLocks();
+          const n = items ? autoBreakMatches(items, next, (id) => locked.has(String(id))).length : 0;
+          if (n && !window.confirm('Automatic break down is on: ' + n + ' item' + (n === 1 ? '' : 's') + ' in your backpack match and will be broken down right away. This cannot be undone. Continue?')) { render(); return; }
+        }
+        mergeSettings(patch);
+        if ($('#fstPfWays').length) remember('pathfinderWaysOnly', $('#fstPfWays').prop('checked') ? '1' : '0');
+        msg('Saved.');
+      } finally { busy = false; }
+    }
+    onSettingEdit = save;
+
+    function build(tabs) {
+      ensureSetCss();
+      $('head').append('<style id="fstStyle">' +
+        '#fstSettings{padding:10px 14px;color:#3b2a14;text-align:left}' +
+        '#fstSettings .fstTitle{font-size:16px;font-weight:bold;margin:0 0 8px}' +
+        '#fstSettings .fstNav{margin:0 0 6px}' +
+        '#fstSettings .fstCat{display:inline-block;min-width:34px;box-sizing:border-box;margin:0 4px 4px 0;padding:4px 12px;text-align:center;cursor:pointer;user-select:none;-webkit-user-select:none;' +
+        'font:bold 12px Arial,sans-serif;color:#3a2a12;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;}' +
+        '#fstSettings .fstCat:hover{background:#f0e3bf}#fstSettings .fstCat.bp-on{background:#c8dc86;border-color:#4f6f12;box-shadow:inset 0 2px 4px rgba(0,0,0,.35)}' +
+        '#fstSettings .fstPanel{max-width:520px;padding-bottom:6px}' +
+        '#fstSettings .fstMsg{min-height:18px;margin:8px 0 0;font-weight:bold;color:#2c6a12}' +
+        '#fstSettings a{color:#5a3a10}' +
+        '</style>');
+      $(tabs).find('.ui-tabs-nav').append('<li><a href="#fstSettings">FST</a></li>');
+      $(tabs).append('<div id="fstSettings"><div class="fstTitle">Fallen Sword Toolkit</div><div id="fstBody"></div><div class="fstMsg" id="fstMsg"></div></div>');
+      render();
+      $(tabs).tabs('refresh');
+      // the link "More settings" of the backpack lands here
+      if (location.hash === '#fstSettings') $(tabs).tabs('option', 'active', $(tabs).find('.ui-tabs-nav li').index($(tabs).find('a[href="#fstSettings"]').parent()));
+    }
+
+    $(document).on('change', '#fstSettings input[type=checkbox], #fstSettings input[type=number]', save);
+    $(document).on('keydown', '#fstSettings input[type=number]', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }); // not the game's form
+    $(document).on('click keydown', '#fstSettings .fstCat', function (e) {
+      if (e.type === 'keydown') {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+      }
+      cat = $(this).attr('data-c');
+      remember('fstCat', cat);
+      $('#fstSettings .fstCat').removeClass('bp-on');
+      $(this).addClass('bp-on');
+      $('#fstSettings .fstPanel').hide().filter('[data-c="' + cat + '"]').show();
+    });
+    $(document).on('click', '#fstReset', (e) => {
+      e.preventDefault();
+      if (!window.confirm('Put all the Fallen Sword Toolkit settings back to their defaults?')) return;
+      saveSettings(Object.assign({}, DEFAULT_SETTINGS, { always: DEFAULT_SETTINGS.always.slice(), autoBreakRar: DEFAULT_SETTINGS.autoBreakRar.slice() }));
+      SET = loadSettings();
+      remember('pathfinderWaysOnly', '0');
+      render();
+      msg('Defaults restored.');
+    });
+
+    // the game builds its tabs after the page is loaded (and other scripts add their own): wait for them
+    let tries = 0;
+    const wait = setInterval(() => {
+      const tabs = document.getElementById('settingsTabs');
+      if (tabs && $(tabs).hasClass('ui-tabs') && $(tabs).find('.ui-tabs-nav').length) {
+        clearInterval(wait);
+        if (!document.getElementById('fstSettings')) build(tabs);
+      } else if (++tries > 40) clearInterval(wait);
+    }, 500);
+  }
+  initFstTab();
+
 
   // ---------------------------------------------------------------- bootstrap
   let tries = 0;
