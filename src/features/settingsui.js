@@ -112,6 +112,13 @@ export const part = {
     '<div class="bpSetH">Quick Buff</div>' +
     sw('bpSetQuickBuff', v.quickBuffPopup, 'Open Quick Buff in a pop-up', 'Instead of a separate browser window, Quick Buff opens in a window on the page that you can drag around.') +
     sw('bpSetQuickBuffInfo', v.quickBuffInfo, 'Buff information in the pop-up', 'In the Quick Buff pop-up: your Sustain and Fury Caster enhancements, whether Guild Buffer, Buff Master, Extend and Reinforce are on, the buffs a target already has (with their level) next to each buff, and the last activity and stamina of the target.'),
+  look: (v) =>
+    '<div class="bpSetH">Looks</div>' +
+    sw('fstNotifStyle', v.notifStyle, 'Restyled notifications', 'The &quot;new logs&quot; and &quot;new Guild Chat messages&quot; notices in the menu get a softer look that matches the rest of the page, instead of the game&#39;s black box with a light border. Applied from the next page load.') +
+    sw('fstTipCache', v.tipCache, 'Remember item tooltips for 10 seconds', 'Hovering an item again within 10 seconds shows the tooltip it had a moment ago, without asking the game again. A craft or upgrade shows up after those 10 seconds. Applied from the next page load.'),
+  guild: (v) =>
+    '<div class="bpSetH">Guild Store</div>' +
+    sw('fstGuildStore', v.guildStore, 'Improved Guild Store window', 'The Store link of the Guild menu opens a window that lists the items of the guild store with their name, type, level and quality, has search and filters, can list the guild tagged items in the backpacks of the other members, and can deposit items from your backpack. Off: the game&#39;s own window. Takes effect on the next page load.'),
   map: (v) =>
     '<div class="bpSetH">World map</div>' +
     sw('fstBreakBtn', v.breakBtn, 'Quick Breakdown Button', 'A small hammer next to the loot you get from creatures in the action list: it breaks the item down instead of destroying it. Shown from the next page load.') +
@@ -148,6 +155,10 @@ const readOthers = (was) => ({
   breakBtn: chk('fstBreakBtn', was.breakBtn),
   wikiBtn: chk('fstWikiBtn', was.wikiBtn),
   pfEnabled: chk('fstPfOn', was.pfEnabled),
+  footprints: chk('fstFootprints', was.footprints),
+  notifStyle: chk('fstNotifStyle', was.notifStyle),
+  guildStore: chk('fstGuildStore', was.guildStore),
+  tipCache: chk('fstTipCache', was.tipCache),
 });
 
 // Drag and drop between the two areas; a click moves the chip too (touch screens).
@@ -219,14 +230,15 @@ export function openBackpackSettings(applied) {
 // turning on the automatic break down first shows how many items would go. Needs the tabs of the game's own preferences page.
 export function initFstTab() {
   if (!/[?&]cmd=settings(&|$)/.test(location.search)) return;
-  const CATS = [['general', 'General'], ['backpack', 'Backpack'], ['break', 'Break down'], ['map', 'Map'], ['pf', 'Path Finder']];
+  const CATS = [['general', 'General'], ['backpack', 'Backpack'], ['break', 'Break down'], ['map', 'Map'], ['pf', 'Path Finder'], ['guild', 'Guild']];
   const panel = (c, v) => ({
-    general: part.quickBuff(v) +
+    general: part.quickBuff(v) + part.look(v) +
       '<div class="bpSetH">All settings</div><div class="bpSwRow"><a href="#" id="fstReset">Restore the default settings</a> ' + tip('Puts every setting of the Fallen Sword Toolkit back to how it was when you installed it. Item locks and the log are kept.') + '</div>',
     backpack: part.type(v) + part.filters() + part.display(v) + part.locks(v),
     break: part.autoBreak(v),
     map: part.map(v),
     pf: part.pf(v),
+    guild: part.guild(v),
   }[c]);
   let cat = recall('fstCat');
   if (!CATS.some((c) => c[0] === cat)) cat = CATS[0][0];

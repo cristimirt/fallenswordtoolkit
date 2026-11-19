@@ -23,6 +23,12 @@ const SECTIONS = [
     "The game's Footprints button stays on when you reload the page, with the tiles it marked.",
     'Path Finder: type where you want to go and see the way from where you stand, step by step, following you as you move.',
   ]],
+  ['Guild Store', [
+    'The Store link of the Guild menu opens a window with a list of the items: name, type, level, quality and craft, with the game\'s item tooltips, instead of a grid of big icons.',
+    'Search by name, filters for type, quality, level range, set, equippable and guild tagged, and sorting by any column.',
+    'A switch that also lists the guild tagged items in the backpacks of the other members (the data of the Guild Inventory page), with who has them.',
+    'Take several items at once, and a Deposit tab to put items from your backpack into the store, which was only possible on a separate page. Links to the Guild Inventory page and the deposit page.',
+  ]],
   ['Quick Buff', [
     'Quick Buff opens in a window on the page that you can drag, not a separate browser window.',
     'Shows the same information as the Fallen Sword Helper (buffs a target already has, your buff enhancements, last activity and stamina), an Activate link for your own buffs, the stamina cost of each buff, low level buffs dimmed, and an option to sort the buffs alphabetically.',
@@ -33,7 +39,7 @@ const SECTIONS = [
     'Works next to the Fallen Sword Helper; the www.fallensword.com address is sent to fallensword.com so that your settings are kept in one place.',
   ]],
   ['Settings', [
-    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map and Path Finder. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
+    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map, Path Finder and Guild. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
     'The gear button on the backpack page opens the quick settings of the backpack only (filters, display, locked items), with a link to the rest.',
   ]],
 ];

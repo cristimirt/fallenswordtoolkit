@@ -23,7 +23,7 @@ export const PER_PAGE_CHOICES = [10, 20, 30, 40, 50, 100];
 export const SIZE_CHOICES = [50, 75, 100];
 
  // item icon size, percent
-export const DEFAULT_SETTINGS = { typeStyle: 'new', always: ['tg'], perPage: 20, size: 100, empty: true, modernPager: true, lockUse: true, lockExtract: true, quickBuffPopup: true, quickBuffInfo: true, autoBreak: false, autoBreakDry: false, autoBreakRar: [0, 1], autoBreakMin: null, autoBreakMax: null, breakBtn: true, wikiBtn: true, pfEnabled: true, footprints: true };
+export const DEFAULT_SETTINGS = { typeStyle: 'new', always: ['tg'], perPage: 20, size: 100, empty: true, modernPager: true, lockUse: true, lockExtract: true, quickBuffPopup: true, quickBuffInfo: true, autoBreak: false, autoBreakDry: false, autoBreakRar: [0, 1], autoBreakMin: null, autoBreakMax: null, breakBtn: true, wikiBtn: true, pfEnabled: true, footprints: true, notifStyle: true, guildStore: true, tipCache: true };
 
 export const lvlOrNull = (v) => { const n = parseInt(v, 10); return isNaN(n) || n < 0 ? null : n; };
 
@@ -52,6 +52,9 @@ export function loadSettings() {
     wikiBtn: o.wikiBtn !== false,
     pfEnabled: o.pfEnabled !== false,
     footprints: o.footprints !== false,
+    notifStyle: o.notifStyle !== false,
+    guildStore: o.guildStore !== false,
+    tipCache: o.tipCache !== false,
   };
 }
 
