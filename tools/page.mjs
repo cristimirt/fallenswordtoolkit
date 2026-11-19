@@ -20,6 +20,7 @@ const SECTIONS = [
   ]],
   ['World map', [
     'A wiki button that opens the page of the area you are in.',
+    "The game's Footprints button stays on when you reload the page, with the tiles it marked.",
     'Path Finder: type where you want to go and see the way from where you stand, step by step, following you as you move.',
   ]],
   ['Quick Buff', [

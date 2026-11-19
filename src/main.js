@@ -7,6 +7,7 @@ import { initActionList } from './features/actionlist.js';
 import { installAutobreak } from './features/autobreak.js';
 import { installBackpack } from './features/backpack.js';
 import { initBackpackPopup } from './features/bagpopup.js';
+import { initFootprints } from './features/footprints.js';
 import { initAuctionHouse, initBuffMarket } from './features/markets.js';
 import { initPathfinder } from './features/pathfinder.js';
 import { initQuickBuffPopup } from './features/quickbuff.js';
@@ -26,6 +27,7 @@ export default function start(ctx) {
   initSidebarWidgets();
   useGameTips();
   initWikiButton();
+  initFootprints();
   initPathfinder();
   initQuickBuffPopup();
   installAutobreak();

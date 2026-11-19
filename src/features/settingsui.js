@@ -115,7 +115,8 @@ export const part = {
   map: (v) =>
     '<div class="bpSetH">World map</div>' +
     sw('fstBreakBtn', v.breakBtn, 'Quick Breakdown Button', 'A small hammer next to the loot you get from creatures in the action list: it breaks the item down instead of destroying it. Shown from the next page load.') +
-    sw('fstWikiBtn', v.wikiBtn, 'Map Wiki button', 'A &quot;W&quot; button on the world page that opens the wiki page of the map you are on. Shown from the next page load.'),
+    sw('fstWikiBtn', v.wikiBtn, 'Map Wiki button', 'A &quot;W&quot; button on the world page that opens the wiki page of the map you are on. Shown from the next page load.') +
+    sw('fstFootprints', v.footprints, 'Remember Footprints', 'The game&#39;s Footprints button on the world page stays on after you reload the page, and the tiles it marked are kept for each map and put back. Pressing the button clears them, as in the game. Takes effect on the next page load.'),
   pf: (v) =>
     '<div class="bpSetH">Path Finder</div>' +
     sw('fstPfOn', v.pfEnabled, 'Path Finder', 'The Path Finder button on the world page, which opens a panel that shows the way to any area, step by step. Shown from the next page load.') +

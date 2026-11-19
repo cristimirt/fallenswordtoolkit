@@ -9,7 +9,7 @@ A userscript for [Fallen Sword](https://fallensword.com/): a better backpack and
 - **Backpack:** search by name as you type, level range and set filters, rarity / equippable / usable / container / guild tagged / bound / duplicates / hellforge level / craft quality filters, item counts on the type icons, durability sort, items per page and icon size, locked items (a locked item cannot be destroyed or broken down), and a backpack pop-up from the top bar.
 - **Break down:** a button next to world loot, and an automatic break down (off by default) with rarity and level choices, a dry run mode, and a log of everything broken down with the fragments gained. It never touches locked, bound or guild tagged items or containers.
 - **Markets:** a searchable Buff Market list; search boxes and colour filters in the Auction House.
-- **World map:** a wiki button for the area you are in, and a Path Finder that shows the way step by step.
+- **World map:** a wiki button for the area you are in, the game's Footprints button staying on, with its marked tiles, after a reload, and a Path Finder that shows the way step by step.
 - **Quick Buff:** opens in a draggable window with buffs already on the target, enhancements, last activity, stamina cost, and an Activate link.
 - **Everything else:** draggable sidebar widgets, the game's own tooltip and scrollbar style, works next to the Fallen Sword Helper.
 
