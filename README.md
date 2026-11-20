@@ -11,6 +11,7 @@ A userscript for [Fallen Sword](https://fallensword.com/): a better backpack and
 - **Markets:** a searchable Buff Market list; search boxes and colour filters in the Auction House.
 - **World map:** a wiki button for the area you are in, the game's Footprints button staying on, with its marked tiles, after a reload, and a Path Finder that shows the way step by step.
 - **Guild Store:** the Store link of the Guild menu opens a list with name, type, level and quality, search and filters, optionally the guild tagged items in the other members' backpacks, taking several items at once, and depositing items from your backpack.
+- **Skills Guide:** the Skill Guide page lists every skill with its type, whether players can learn it, the potions that have it (level, duration and where they come from, with the item tooltip on hover), whether it can be in a composed potion and from which composing level, filters, and boxes that work out the bonus at a skill level and the highest level a composing level allows. The potion and composing data come from the wiki (collected 2026-11-20).
 - **Quick Buff:** opens in a draggable window with buffs already on the target, enhancements, last activity, stamina cost, and an Activate link.
 - **Everything else:** draggable sidebar widgets, the game's own tooltip and scrollbar style, works next to the Fallen Sword Helper.
 

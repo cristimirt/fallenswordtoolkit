@@ -29,6 +29,12 @@ const SECTIONS = [
     'A switch that also lists the guild tagged items in the backpacks of the other members (the data of the Guild Inventory page), with who has them.',
     'Take several items at once, and a Deposit tab to put items from your backpack into the store, which was only possible on a separate page. Links to the Guild Inventory page and the deposit page.',
   ]],
+  ['Skills Guide', [
+    'The Skill Guide page lists every skill with its type, whether players can learn it or it only comes from potions, and how many potions have it.',
+    'Every skill shows the potions that have it with level, duration and where they come from, with the item tooltip on hover.',
+    'Shows if a skill can be in a composed potion, from which composing level, and the highest level it can have there.',
+    'Filters for type, learnable, potions, composed potions and potion source, and boxes that work out the bonus at a skill level and what a composing level allows.',
+  ]],
   ['Quick Buff', [
     'Quick Buff opens in a window on the page that you can drag, not a separate browser window.',
     'Shows the same information as the Fallen Sword Helper (buffs a target already has, your buff enhancements, last activity and stamina), an Activate link for your own buffs, the stamina cost of each buff, low level buffs dimmed, and an option to sort the buffs alphabetically.',

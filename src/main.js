@@ -11,6 +11,7 @@ import { initFootprints } from './features/footprints.js';
 import { initTipCache } from './core/tipcache.js';
 import { initNotifications } from './features/notifications.js';
 import { initGuildStore } from './features/guildstore.js';
+import { initSkillGuide } from './features/skillguide.js';
 import { initAuctionHouse, initBuffMarket } from './features/markets.js';
 import { initPathfinder } from './features/pathfinder.js';
 import { initQuickBuffPopup } from './features/quickbuff.js';
@@ -34,6 +35,7 @@ export default function start(ctx) {
   initTipCache();
   initNotifications();
   initGuildStore();
+  initSkillGuide();
   initPathfinder();
   initQuickBuffPopup();
   installAutobreak();
