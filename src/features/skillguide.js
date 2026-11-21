@@ -1,13 +1,14 @@
 import { loadSettings, recall, remember } from '../core/settings.js';
 import { $, esc } from '../core/util.js';
 import { withFst } from '../core/game.js';
-import { COMPOSE, POTIONS, TREES } from '../data/skillpotions.js';
+import { COMPOSE, LEARN, POTIONS, TREES } from '../data/skillpotions.js';
 
 // ---------------------------------------------------------------- improved Skills Guide
 // index.php?cmd=skills&subcmd=guide lists every skill of the game: the icon, the name and what it does. This replaces the list (setting
 // skillGuide, FST tab > Looks) with one where every skill also shows
 //   - its type (Offense / Defense / Special: the three skill trees; a skill that is in none of them has no known type),
-//   - whether players can learn it (it is in a skill tree) or it only comes from potions,
+//   - whether players can learn it (it is in a skill tree) or it only comes from potions; for a skill that can be learned also the level needed,
+//     the skill that has to be learned first, the stamina it costs and how long it lasts (LEARN in src/data/skillpotions.js),
 //   - the potions that have it, with the level, the duration and where the potion comes from (wiki data, src/data/skillpotions.js),
 //   - whether it can be in a composed potion: from which composing level on, and the highest level a composed potion can have it,
 // and a bar of filters, and two boxes that work out the bonus at a skill level and what a composing level allows.
@@ -86,7 +87,8 @@ export function initSkillGuide() {
   });
   if (!skills.length) return;
   const byName = new Map(skills.map((s) => [norm(s.name), s]));
-  skills.forEach((s) => { s.pp = perPoint(s.desc); s.potions = []; s.comp = COMPOSE[s.name] || null; s.type = -1; s.learn = false; s.rec = false; });
+  skills.forEach((s) => { s.pp = perPoint(s.desc); s.potions = []; s.comp = COMPOSE[s.name] || null; s.type = -1; s.learn = false; s.rec = false; s.lr = LEARN[s.id] || null; });
+  const byId = new Map(skills.map((s) => [s.id, s]));
   POTIONS.forEach((p) => p[3].forEach((b) => { const s = byName.get(norm(b[0])); if (s) s.potions.push({ id: p[0], name: p[1], rar: p[2], lvl: b[1], min: b[2], src: p[4] }); }));
   skills.forEach((s) => s.potions.sort((a, b) => b.lvl - a.lvl || a.name.localeCompare(b.name)));
 
@@ -148,7 +150,7 @@ export function initSkillGuide() {
   const $root = $('<div id="fsbSg"></div>').appendTo($host);
   const types = [['', 'Any type']].concat(TYPE_NAMES.map((n, i) => [String(i), n]), [['-1', 'No known type']]);
   const yn = (a) => [['', a], ['y', 'Yes'], ['n', 'No']];
-  const sorts = [['name', 'Sort: name'], ['type', 'Sort: type'], ['pots', 'Sort: most potions'], ['max', 'Sort: highest potion level']];
+  const sorts = [['name', 'Sort: name'], ['type', 'Sort: type'], ['level', 'Sort: level to learn'], ['pots', 'Sort: most potions'], ['max', 'Sort: highest potion level']];
   $root.html(
     '<div class="sgBar"><input type="text" id="sgQ" placeholder="Name, text or potion" autocomplete="off" spellcheck="false">' +
     '<select id="sgType">' + opts(types, st.type) + '</select>' +
@@ -178,6 +180,7 @@ export function initSkillGuide() {
     }
     return true;
   };
+  const fact = (label, yes, text) => '<span>' + label + ' <b class="' + (yes ? 'sgYes' : 'sgNo') + '">' + text + '</b></span>';
   const potHtml = (s) => s.potions.map((p) => {
     const tip = p.id ? ' class="tip-dynamic" data-tipped="' + esc('fetchitem.php?item_id=' + p.id + '&inv_id=-1&t=2&p=-1') + '"' : '';
     const ss = p.src.slice().sort((a, b) => KIND_ORDER.indexOf(a[0]) - KIND_ORDER.indexOf(b[0]));
@@ -187,10 +190,16 @@ export function initSkillGuide() {
       '<div class="sgPotT"><a' + tip + ' style="color:' + (LIGHT[p.rar] || '#3b2a14') + '">' + esc(p.name) + '</a><small>' + (srcs.length ? esc(srcs.join(' · ')) : 'Source not known') + '</small></div>' +
       '<div class="sgPotL"><b>Level ' + p.lvl + '</b>' + (b ? ' <span class="sgSimv">' + esc(b) + '</span>' : '') + '<small>' + p.min + ' min</small></div></div>';
   }).join('');
+  // what the skill tree of the game shows for a skill that can be learned
+  const learnFacts = (s) => {
+    const l = s.lr;
+    if (!s.learn || !l) return '';
+    const pre = l[3] >= 0 && byId.get(l[3]);
+    return fact('Level', true, l[0] + '+') + fact('Needs', !!pre, pre ? esc(pre.name) + ' (10 points)' : 'nothing first') + fact('Stamina', true, l[1]) + fact('Duration', true, l[2] + ' min');
+  };
   const rowHtml = (s) => {
     const showPots = open.has(s.id) || $('#sgAll').prop('checked');
     const c = s.comp;
-    const fact = (label, yes, text) => '<span>' + label + ' <b class="' + (yes ? 'sgYes' : 'sgNo') + '">' + text + '</b></span>';
     let sim = '';
     if (st.lvl != null) sim += s.pp ? '<div class="sgLine">At skill level <b>' + st.lvl + '</b>: <span class="sgSimv">' + esc(bonus(s.pp, st.lvl)) + '</span></div>' : '<div class="sgLine">At skill level <b>' + st.lvl + '</b>: this skill has no simple bonus per point.</div>';
     let comp = '';
@@ -204,7 +213,7 @@ export function initSkillGuide() {
     }
     return '<div class="sgRow" data-id="' + s.id + '"><img class="sgIco" src="' + CDN + 'skills/' + s.id + '.png" alt="" width="40" height="40">' +
       '<div class="sgMain"><div class="sgName">' + esc(s.name) + '</div><div class="sgDesc">' + s.desc + '</div>' +
-      '<div class="sgFacts">' + fact('Type', s.type >= 0, s.type >= 0 ? TYPE_NAMES[s.type] : 'not in a skill tree') + fact('Learned by players', s.learn, s.learn ? 'Yes' : 'No, potions only') +
+      '<div class="sgFacts">' + fact('Type', s.type >= 0, s.type >= 0 ? TYPE_NAMES[s.type] : 'not in a skill tree') + fact('Learned by players', s.learn, s.learn ? 'Yes' : 'No, potions only') + learnFacts(s) +
       fact('In potions', s.potions.length > 0, s.potions.length ? 'Yes (' + s.potions.length + ')' : 'No') + fact('In composed potions', !!c, c ? 'Yes' : 'No') + '</div>' +
       sim + comp +
       (s.potions.length ? '<button type="button" class="sgToggle" data-id="' + s.id + '">' + (showPots ? 'Hide' : 'Show') + ' the ' + s.potions.length + ' potions</button>' + (showPots ? '<div class="sgPots">' + potHtml(s) + '</div>' : '') : '') +
@@ -213,7 +222,7 @@ export function initSkillGuide() {
   const topLevel = (s) => (s.potions.length ? s.potions[0].lvl : -1);
   function draw() {
     let list = skills.filter(matches);
-    const by = { name: (a, b) => a.name.localeCompare(b.name), type: (a, b) => (a.type === -1 ? 9 : a.type) - (b.type === -1 ? 9 : b.type) || a.name.localeCompare(b.name), pots: (a, b) => b.potions.length - a.potions.length || a.name.localeCompare(b.name), max: (a, b) => topLevel(b) - topLevel(a) || a.name.localeCompare(b.name) };
+    const by = { name: (a, b) => a.name.localeCompare(b.name), type: (a, b) => (a.type === -1 ? 9 : a.type) - (b.type === -1 ? 9 : b.type) || a.name.localeCompare(b.name), pots: (a, b) => b.potions.length - a.potions.length || a.name.localeCompare(b.name), level: (a, b) => (a.lr ? a.lr[0] : 1e9) - (b.lr ? b.lr[0] : 1e9) || a.name.localeCompare(b.name), max: (a, b) => topLevel(b) - topLevel(a) || a.name.localeCompare(b.name) };
     list = list.sort(by[st.sort] || by.name);
     $('#sgCount').text(list.length + ' of ' + skills.length + ' skills');
     $('#sgList').html(list.length ? list.map(rowHtml).join('') : '<div class="sgNone">No skill matches these filters.</div>');
