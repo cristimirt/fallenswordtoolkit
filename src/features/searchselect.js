@@ -15,6 +15,11 @@ export function ensureSearchStyle() {
         '.bpBuffList{display:none;position:absolute;left:0;top:100%;z-index:1000;min-width:100%;max-height:220px;overflow-y:auto;' +
         'margin:0;padding:0;list-style:none;white-space:nowrap;text-align:left;font:12px Helvetica,Arial;' +
         'background:#e8c88e;border:1px solid #6b5230;border-radius:4px;box-shadow:0 3px 8px rgba(0,0,0,.4);}' +
+        '.bpBuffList{scrollbar-width:thin;scrollbar-color:#8a6a38 #d9b774;}' +
+        '.bpBuffList::-webkit-scrollbar{width:9px;}' +
+        '.bpBuffList::-webkit-scrollbar-track{background:#d9b774;border-radius:4px;box-shadow:inset 0 0 2px #20170399;}' +
+        '.bpBuffList::-webkit-scrollbar-thumb{background:#8a6a38;border:1px solid #20170396;border-radius:4px;}' +
+        '.bpBuffList::-webkit-scrollbar-thumb:hover{background:#6b5230;}' +
         '.bpBuffList li{padding:2px 6px;cursor:pointer;color:#3b2a14;}' +
         '.bpBuffList li.bpBuffActive{background:#d9b774;}' +
         '#backpack-multi-options .bpBuffBox input{width:120px;height:18px;box-sizing:border-box;padding:0 6px;border:1px solid #6b5230;border-radius:4px;' +
@@ -54,7 +59,7 @@ export function ensureSearchStyle() {
 
   }
 
-// opts.look: the backpack dropdowns' look (the Auction House); opts.matchWidth: the box is as wide as the select was;
+// opts.resetOnEmpty: emptying the box selects the first option ("any"); opts.look: the backpack dropdowns' look (the Auction House); opts.matchWidth: the box is as wide as the select was;
 // opts.swatch(value, text) -> { color, shape: 'square' | 'diamond' } or null: a colour mark in front of the option
 export function searchSelect(select, placeholder, noMatch, opts) {
   ensureSearchStyle();
@@ -160,7 +165,11 @@ export function searchSelect(select, placeholder, noMatch, opts) {
     this.select();
     show(''); // the whole list first, so it can still be browsed like the original select
   });
-  $in.on('input', function () { show($in.val()); });
+  $in.on('input', function () {
+    // opts.resetOnEmpty: emptying the box goes back to the first option ("any")
+    if (opts.resetOnEmpty && !$in.val() && select.selectedIndex > 0) { select.selectedIndex = 0; select.dispatchEvent(new Event('change', { bubbles: true })); }
+    show($in.val());
+  });
   $in.on('blur', hide);
   $in.on('keydown', function (e) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {

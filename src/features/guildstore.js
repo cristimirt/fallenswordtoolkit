@@ -3,6 +3,8 @@ import { CRAFT_COLORS, RARITIES, norm } from '../core/items.js';
 import { FSB, loadSettings, recall, remember } from '../core/settings.js';
 import { $, esc } from '../core/util.js';
 import { fetchBag } from './autobreak.js';
+import { COMPOSE, POTIONS } from '../data/skillpotions.js';
+import { searchSelect } from './searchselect.js';
 
 // ---------------------------------------------------------------- guild store window
 // The "Store" link of the Guild menu (a.guild_openGuildStore) opens the game's own window of the guild store: a grid of big icons,
@@ -100,7 +102,7 @@ export function initGuildStore() {
 
   let box = null;
   let tab = recall('gsTab') === 'put' ? 'put' : 'take';
-  const F = { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '' };
+  const F = { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '', buff: '' };
   let withMembers = recall('gsMembers') === '1';
   let sort = { k: 'name', d: 1 };
   let view = recall('gsView') === 'tiles' ? 'tiles' : 'list'; // the list, or big icons with the name under them
@@ -138,7 +140,7 @@ export function initGuildStore() {
       const e = byInv.get(s.a) || {};
       const st = e.stats || {};
       return {
-        id: s.a, item: s.b, name: s.n, type: s.t, lvl: s.l, rar: e.rarity, set: cleanSet(st.set_name) || (s.s ? 'Set item' : ''), tagged: !!s.tg, eq: !!s.eq,
+        id: s.a, item: s.b, name: s.t === 15 && s.extra && s.extra.name ? s.extra.name : s.n, type: s.t, lvl: s.l, rar: e.rarity, set: cleanSet(st.set_name) || (s.s ? 'Set item' : ''), tagged: !!s.tg, eq: !!s.eq,
         cr: craftIdx(e.craft), craft: e.craft || '', forge: e.forge || 0, owner: -1, cost: s.c, extra: s.extra,
       };
     });
@@ -160,6 +162,67 @@ export function initGuildStore() {
     }));
   }
 
+  // ---------- potion buffs ----------
+  // the buffs of a potion: [[skill, level, minutes], ...]. Plain potions: the item guide data; composed potions (any name the player gave them):
+  // the tooltip of the item, read in the background once the Buff filter is in use (tipBuffs); null = not known yet
+  // every buff a potion can give (the item guide data and the composing skills), so the filter lists all of them, not only those in the list
+  const ALL_BUFFS = Array.from(new Set(POTIONS.flatMap((p) => p[3].map((b) => b[0])).concat(Object.keys(COMPOSE)))).sort((a, b) => a.localeCompare(b));
+  const canon = (n) => ALL_BUFFS.find((x) => norm(x) === norm(n)) || n; // the tooltip's spelling of a skill -> the one of the list
+  const POT = new Map(POTIONS.map((p) => [p[0], p[3]]));
+  // cache of the composed potions: inventory id -> [name, buffs]. A composed potion never changes, so it is kept in the browser
+  // (gsComposed2) and each potion's tooltip is read only once; the newest COMPOSED_MAX are kept
+  const COMPOSED_MAX = 3000;
+  const tipBuffs = new Map();
+  try { const o = JSON.parse(recall('gsComposed2') || '{}'); Object.keys(o).forEach((k) => { if (Array.isArray(o[k]) && Array.isArray(o[k][1]) && o[k][1].length) tipBuffs.set(Number(k), o[k]); }); } catch (e) { /* no cache */ }
+  const saveComposed = () => {
+    const keys = Array.from(tipBuffs.keys()).slice(-COMPOSED_MAX), o = {};
+    keys.forEach((k) => { o[k] = tipBuffs.get(k); });
+    remember('gsComposed2', JSON.stringify(o));
+  };
+  const buffsOf = (r) => (r.type === 10 ? POT.get(r.item) || [] : r.type === 15 ? (tipBuffs.get(r.id) || [])[1] || null : []);
+  const applyCached = (r) => { const c = r.type === 15 && r.name === 'Composing Item' ? tipBuffs.get(r.id) : null; if (c && c[0]) r.name = c[0]; };
+  // The tooltips are read one at a time with a pause between them (the game answers 503 when asked too fast); on a 503 or 429 it waits
+  // longer and tries the same potion again, and gives up for now after a few in a row. One run at a time, taking what is in the list
+  // at that moment; a potion that cannot be read is not asked again until the window is opened again.
+  const unread = new Set();
+  let reading = false;
+  const getTip = (u) => new Promise((resolve) => { $.ajax({ url: withFst('/' + u), dataType: 'text', success: (t) => resolve({ ok: true, t }), error: (x) => resolve({ ok: false, status: x.status }) }); });
+  async function readTips() {
+    if (reading) return;
+    reading = true;
+    let fails = 0;
+    let n = 0;
+    try {
+      while (box) {
+        const r = rows.find((x) => x.type === 15 && !tipBuffs.has(x.id) && !unread.has(x.id));
+        if (!r) break;
+        const res = await getTip(tipOf(r));
+        if (!res.ok) {
+          if (res.status === 503 || res.status === 429 || !res.status) { if (++fails >= 4) break; await sleep(2500 * fails); continue; }
+          unread.add(r.id);
+          continue;
+        }
+        fails = 0;
+        const t = new DOMParser().parseFromString(res.t, 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+        const head = /^(.*?)\s+Composed Potion/.exec(t);
+        const nm = head && head[1] ? head[1] : r.name;
+        const seg = /Duration(.*?)(?:Min Level|Note:|$)/.exec(t);
+        const out = [];
+        if (seg) { const re = /\s*(.+?)\s+(\d+)\s+(\d+)\s*[mh]/g; let m; while ((m = re.exec(seg[1]))) out.push([canon(m[1].trim()), +m[2], +m[3]]); }
+        if (!out.length) { unread.add(r.id); continue; }
+        if (r.name === 'Composing Item') r.name = nm;
+        tipBuffs.set(r.id, [nm, out]);
+        if (++n % 20 === 0) saveComposed();
+        if (n % 10 === 0 && box && F.buff !== '') drawList();
+        await sleep(300 + Math.random() * 200);
+      }
+    } finally {
+      reading = false;
+      saveComposed();
+      if (box && (n || fails >= 4)) { const keep = document.activeElement && document.activeElement.id; drawBody(false); if (keep) { const el = box.querySelector('#' + keep); if (el) el.focus(); } }
+    }
+  }
+
   // ---------- filtering and sorting ----------
   function visible() {
     const q = norm(F.q).split(/\s+/).filter(Boolean);
@@ -177,6 +240,7 @@ export function initGuildStore() {
       if (F.dup && (dupCount.get(r.item) || 0) < 2) return false;
       if (F.hf === 'none' ? r.forge > 0 : F.hf !== '' && r.forge !== +F.hf) return false;
       if (F.craft === 'none' ? r.cr >= 0 : F.craft !== '' && r.cr !== +F.craft) return false;
+      if (F.buff !== '' && !(buffsOf(r) || []).some((b) => b[0] === F.buff)) return false;
       return true;
     });
     const k = sort.k, d = sort.d;
@@ -204,6 +268,12 @@ export function initGuildStore() {
     rows.forEach((r) => { counts[r.type] = (counts[r.type] || 0) + 1; });
     const tOpts = '<option value="">All types</option>' + Object.keys(counts).map(Number).sort((a, b) => a - b)
       .map((t) => '<option value="' + t + '"' + (String(t) === String(F.type) ? ' selected' : '') + '>' + esc(TYPES[t] || 'Type ' + t) + ' (' + counts[t] + ')</option>').join('');
+    const bc = {};
+    rows.forEach((r) => { (buffsOf(r) || []).forEach((b) => { bc[b[0]] = (bc[b[0]] || 0) + 1; }); });
+    const pend = rows.some((r) => r.type === 15 && !tipBuffs.has(r.id));
+    const names = ALL_BUFFS.concat(Object.keys(bc).filter((b) => ALL_BUFFS.indexOf(b) === -1)).sort((a, b) => a.localeCompare(b));
+    const bOpts = '<option value="">Buff: any</option>' + names
+      .map((b) => '<option value="' + esc(b) + '"' + (b === F.buff ? ' selected' : '') + '>' + esc(b) + (bc[b] ? ' (' + bc[b] + ')' : '') + '</option>').join('');
     const rar = RARITIES.map((r, i) => '<span class="gsRar' + (F.rars.has(i) ? ' on' : '') + '" role="button" tabindex="0" data-r="' + i + '" title="' + esc(r[0]) + '"><i style="background:' + r[1] + '"></i></span>').join('');
     return '<div class="gsBar">' +
       '<input type="text" id="gsQ" placeholder="Search name' + (tab === 'take' && withMembers ? ' or member' : '') + '" value="' + esc(F.q) + '" autocomplete="off" spellcheck="false">' +
@@ -211,7 +281,7 @@ export function initGuildStore() {
       '<span>Level <input type="number" id="gsMin" min="0" placeholder="min" value="' + esc(F.min) + '"> - <input type="number" id="gsMax" min="0" placeholder="max" value="' + esc(F.max) + '"></span>' +
       '<span class="gsRars">Quality: ' + rar + '</span>' +
       '</div><div class="gsBar">' +
-      '<select id="gsHf">' + opts(HF_OPT, F.hf) + '</select><select id="gsCraft">' + opts(CRAFT_OPT, F.craft) + '</select>' +
+      '<select id="gsHf">' + opts(HF_OPT, F.hf) + '</select><select id="gsCraft">' + opts(CRAFT_OPT, F.craft) + '</select><select id="gsBuff" title="Only the potions (composed or not) that give this buff">' + bOpts + '</select>' + (pend ? '<small id="gsBuffMsg">reading composed potions...</small>' : '') +
       sw('gsSet', F.set, 'Set') + sw('gsEq', F.eq, 'Equippable') + sw('gsDup', F.dup, 'Duplicates', 'Only items of which there are two or more in this list.') +
       (tab === 'take' ? sw('gsMem', withMembers, 'Members&#39; items', 'Also list the guild tagged items that are in the backpacks of the other members, the ones on the Guild Inventory page. They cannot be taken from here: the list shows who has them. Worn items are included.') : '') +
       '</div><div class="gsBar">' +
@@ -241,7 +311,7 @@ export function initGuildStore() {
       let g = '<div class="gsGrid' + (size !== 100 ? ' s' + size : '') + '">';
       part.forEach((r) => {
         const cls = LIGHT[r.rar] || '#3b2a14';
-        const sub = [r.lvl == null ? '' : 'Lvl ' + r.lvl, r.set || (r.extra && r.extra.name ? r.extra.name : '')].filter(Boolean).join(' · ');
+        const sub = [r.lvl == null ? '' : 'Lvl ' + r.lvl, r.set || (r.extra && r.extra.name ? 'Composed' + (r.extra.duration ? ' · ' + r.extra.duration + ' min' : '') : '')].filter(Boolean).join(' · ');
         g += '<div class="gsTile' + (sel.has(r.id) ? ' sel' : '') + '" data-id="' + r.id + '">' + (canSel(r) ? '<input type="checkbox" class="gsPick" data-id="' + r.id + '"' + (sel.has(r.id) ? ' checked' : '') + '>' : '') +
           slotHtml(r) +
           '<a class="tip-dynamic gsTn" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' +
@@ -256,7 +326,7 @@ export function initGuildStore() {
       const cls = LIGHT[r.rar] || '#3b2a14';
       h += '<tr data-id="' + r.id + '"><td class="c">' + (canSel(r) ? '<input type="checkbox" class="gsPick" data-id="' + r.id + '"' + (sel.has(r.id) ? ' checked' : '') + '>' : '') + '</td>' +
         '<td class="i"><img class="tip-dynamic" data-tipped="' + esc(tipOf(r)) + '" src="' + esc(imgOf(r)) + '" alt="" loading="lazy"></td>' +
-        '<td class="n"><a class="tip-dynamic" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' + (r.set ? '<small>' + esc(r.set) + '</small>' : r.extra && r.extra.name ? '<small>' + esc(r.extra.name) + (r.extra.duration ? ' &middot; ' + r.extra.duration + ' min' : '') + '</small>' : '') + '</td>' +
+        '<td class="n"><a class="tip-dynamic" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' + (r.set ? '<small>' + esc(r.set) + '</small>' : r.extra && r.extra.name ? '<small>Composed' + (r.extra.duration ? ' &middot; ' + r.extra.duration + ' min' : '') + '</small>' : '') + '</td>' +
         '<td>' + esc(TYPES[r.type] || '') + '</td><td class="num">' + (r.lvl == null ? '' : r.lvl) + '</td><td>' + esc((RARITIES[r.rar] || [''])[0]) + '</td>' +
         (tab === 'take' ? '<td>' + esc(r.craft) + (r.forge ? ' <small>+' + r.forge + '</small>' : '') + '</td>' : '') +
         (showOwner ? '<td>' + (r.owner === -1 ? 'Guild store' : esc(nameOfMember(r.owner)) + (r.worn ? ' (worn)' : '')) + '</td>' : '') +
@@ -287,11 +357,12 @@ export function initGuildStore() {
     if (all) all.checked = !!box.querySelectorAll('.gsPick').length && Array.from(box.querySelectorAll('.gsPick')).every((c) => c.checked);
   }
   function drawBody(loading) {
+    rows.forEach(applyCached);
     const body = box.querySelector('.gsBody');
     const keepQ = document.activeElement && document.activeElement.id === 'gsQ';
     body.innerHTML = (loading ? '<div class="gsEmpty">Loading...</div>' : barHtml() + '<div class="gsList"></div><div class="gsFoot"></div>') + '<div class="gsMsg"></div>';
     box.querySelectorAll('.gsTab').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    if (!loading) { drawList(); if (keepQ) box.querySelector('#gsQ').focus(); }
+    if (!loading) { const bs = box.querySelector('#gsBuff'); if (bs) searchSelect(bs, 'Search buff...', 'No buff matches', { resetOnEmpty: true }); drawList(); if (keepQ) box.querySelector('#gsQ').focus(); }
   }
 
   // ---------- loading ----------
@@ -325,6 +396,7 @@ export function initGuildStore() {
       rows = depositRows();
     }
     drawBody(false);
+    readTips();
   }
   async function loadMembers(my) {
     if (members || !guildId) return;
@@ -426,7 +498,7 @@ export function initGuildStore() {
     const t = e.target;
     if (t.closest('.gsTab')) { switchTab(t.closest('.gsTab').dataset.tab); return; }
     if (t.closest('#gsReload')) { if (!busy) { exp = null; store = null; members = null; load(); } return; }
-    if (t.closest('#gsClear')) { Object.assign(F, { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '' }); page = 0; drawBody(false); return; }
+    if (t.closest('#gsClear')) { Object.assign(F, { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '', buff: '' }); page = 0; drawBody(false); return; }
     const rb = t.closest('.gsRar');
     if (rb) { const i = Number(rb.dataset.r); if (F.rars.has(i)) F.rars.delete(i); else F.rars.add(i); page = 0; rb.classList.toggle('on'); drawList(); return; }
     const vw = t.closest('.gsView button');
@@ -453,6 +525,7 @@ export function initGuildStore() {
     if (t.id === 'gsType') F.type = t.value;
     else if (t.id === 'gsHf') F.hf = t.value;
     else if (t.id === 'gsCraft') F.craft = t.value;
+    else if (t.id === 'gsBuff') { F.buff = t.value; if (F.buff !== '') readTips(); }
     else if (t.id === 'gsSet') F.set = t.checked;
     else if (t.id === 'gsEq') F.eq = t.checked;
     else if (t.id === 'gsDup') F.dup = t.checked;
