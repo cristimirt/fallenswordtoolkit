@@ -9,11 +9,13 @@ A userscript for [Fallen Sword](https://fallensword.com/): a better backpack and
 - **Backpack:** search by name as you type, level range and set filters, rarity / equippable / usable / container / guild tagged / bound / duplicates / hellforge level / craft quality filters, item counts on the type icons, durability sort, items per page and icon size, locked items (a locked item cannot be destroyed or broken down), and a backpack pop-up from the top bar.
 - **Break down:** a button next to world loot, and an automatic break down (off by default) with rarity and level choices, a dry run mode, and a log of everything broken down with the fragments gained. It never touches locked, bound or guild tagged items or containers.
 - **Markets:** a searchable Buff Market list; search boxes and colour filters in the Auction House.
-- **World map:** a wiki button for the area you are in, and a Path Finder that shows the way step by step.
+- **World map:** a wiki button for the area you are in, the game's Footprints button staying on, with its marked tiles, after a reload, and a Path Finder that shows the way step by step.
+- **Guild Store:** the Store link of the Guild menu opens a list with name, type, level and quality, search and filters, optionally the guild tagged items in the other members' backpacks, taking several items at once, and depositing items from your backpack.
+- **Skills Guide:** the Skill Guide page lists every skill with its type, whether players can learn it, the potions that have it (level, duration and where they come from, with the item tooltip on hover), whether it can be in a composed potion and from which composing level, filters, and boxes that work out the bonus at a skill level and the highest level a composing level allows. The potion and composing data come from the wiki (collected 2026-11-20).
 - **Quick Buff:** opens in a draggable window with buffs already on the target, enhancements, last activity, stamina cost, and an Activate link.
 - **Everything else:** draggable sidebar widgets, the game's own tooltip and scrollbar style, works next to the Fallen Sword Helper.
 
-Settings: the **FST** tab of the game's Preferences page holds every setting (General, Backpack, Break down, Map, Path Finder), each with a [?] description. The gear button on the backpack page opens the quick settings of the backpack only.
+Settings: the **FST** tab of the game's Preferences page holds every setting (General, Backpack, Break down, Map, Path Finder, Guild), each with a [?] description. The gear button on the backpack page opens the quick settings of the backpack only.
 
 To see a game page without the toolkit, add `toolkit=off` to its address.
 
@@ -26,7 +28,7 @@ The toolkit is ES modules under `src/`, bundled with esbuild into one file. A sm
 | `loader/fs_toolkit.user.js` | the loader (rarely changes; Tampermonkey updates it from the install page) |
 | `src/main.js` | the entry point: starts every feature |
 | `src/core/` | shared pieces: jQuery, dialogs, settings storage, requests to the game, tooltips, item data |
-| `src/features/` | one module per feature: `backpack`, `actionlist` (break down button), `markets`, `bagpopup`, `sidebars`, `wiki`, `pathfinder` (+ `route`), `quickbuff`, `autobreak`, `settingsui` (quick settings and the FST tab) |
+| `src/features/` | one module per feature: `backpack`, `actionlist` (break down button), `markets`, `bagpopup`, `sidebars`, `wiki`, `pathfinder` (+ `route`), `guildstore`, `notifications`, `quickbuff`, `autobreak`, `settingsui` (quick settings and the FST tab) |
 | `tools/build.mjs` | builds `dist/`: the bundle, `manifest.json`, the loader and the install page |
 | `tools/serve.mjs` | the development server (see below) |
 | `.github/workflows/` | `deploy.yml` publishes `dist/` to GitHub Pages on every push to `main`; `check.yml` builds on pull requests |

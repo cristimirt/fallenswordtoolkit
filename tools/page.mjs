@@ -20,7 +20,20 @@ const SECTIONS = [
   ]],
   ['World map', [
     'A wiki button that opens the page of the area you are in.',
+    "The game's Footprints button stays on when you reload the page, with the tiles it marked.",
     'Path Finder: type where you want to go and see the way from where you stand, step by step, following you as you move.',
+  ]],
+  ['Guild Store', [
+    'The Store link of the Guild menu opens a window with a list of the items: name, type, level, quality and craft, with the game\'s item tooltips, instead of a grid of big icons.',
+    'Search by name, filters for type, quality, level range, set, equippable and guild tagged, and sorting by any column.',
+    'A switch that also lists the guild tagged items in the backpacks of the other members (the data of the Guild Inventory page), with who has them.',
+    'Take several items at once, and a Deposit tab to put items from your backpack into the store, which was only possible on a separate page. Links to the Guild Inventory page and the deposit page.',
+  ]],
+  ['Skills Guide', [
+    'The Skill Guide page lists every skill with its type, whether players can learn it or it only comes from potions, and how many potions have it.',
+    'Every skill shows the potions that have it with level, duration and where they come from, with the item tooltip on hover.',
+    'Shows if a skill can be in a composed potion, from which composing level, and the highest level it can have there.',
+    'Filters for type, learnable, potions, composed potions and potion source, and boxes that work out the bonus at a skill level and what a composing level allows.',
   ]],
   ['Quick Buff', [
     'Quick Buff opens in a window on the page that you can drag, not a separate browser window.',
@@ -32,7 +45,7 @@ const SECTIONS = [
     'Works next to the Fallen Sword Helper; the www.fallensword.com address is sent to fallensword.com so that your settings are kept in one place.',
   ]],
   ['Settings', [
-    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map and Path Finder. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
+    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map, Path Finder and Guild. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
     'The gear button on the backpack page opens the quick settings of the backpack only (filters, display, locked items), with a link to the rest.',
   ]],
 ];
