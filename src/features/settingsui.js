@@ -128,6 +128,7 @@ export const part = {
   pf: (v) =>
     '<div class="bpSetH">Path Finder</div>' +
     sw('fstPfOn', v.pfEnabled, 'Path Finder', 'The Path Finder button on the world page, which opens a panel that shows the way to any area, step by step. Shown from the next page load.') +
+    sw('fstPfPortals', recall('pathfinderPortals') !== '0', 'Use portals', 'Use portals to reach other world maps when working out the way. Off: the way never uses a portal. Same as the switch in the Path Finder panel.') +
     sw('fstPfWays', recall('pathfinderWaysOnly') === '1', 'Only the Cathedral of Ways portal', 'All the other portals, except the one in the Cathedral of Ways, are ignored when working out the way. Same as the switch in the Path Finder panel.'),
 };
 
@@ -269,6 +270,7 @@ export function initFstTab() {
         if (n && !window.confirm('Automatic break down is on: ' + n + ' item' + (n === 1 ? '' : 's') + ' in your backpack match and will be broken down right away. This cannot be undone. Continue?')) { render(); return; }
       }
       mergeSettings(patch);
+      if ($('#fstPfPortals').length) remember('pathfinderPortals', $('#fstPfPortals').prop('checked') ? '1' : '0');
       if ($('#fstPfWays').length) remember('pathfinderWaysOnly', $('#fstPfWays').prop('checked') ? '1' : '0');
       msg('Saved.');
     } finally { busy = false; }
@@ -315,6 +317,7 @@ export function initFstTab() {
     saveSettings(Object.assign({}, DEFAULT_SETTINGS, { always: DEFAULT_SETTINGS.always.slice(), autoBreakRar: DEFAULT_SETTINGS.autoBreakRar.slice() }));
     reloadSettings();
     remember('pathfinderWaysOnly', '0');
+    remember('pathfinderPortals', '1');
     render();
     msg('Defaults restored.');
   });

@@ -17,6 +17,7 @@ export function initPathfinder() {
     open: recall('pathfinderOpen') === '1',
     dest: recall('pathfinderDest') || '',
     waysOnly: recall('pathfinderWaysOnly') === '1',
+    portals: recall('pathfinderPortals') !== '0', // on unless switched off
     mode: 'name', // 'name' or 'level'
     router: null, loadError: '', loading: false,
     here: null, hereName: '', tile: null, route: null, planning: false,
@@ -72,7 +73,7 @@ export function initPathfinder() {
     pf.route = null;
     const { router, dest, here, tile } = pf;
     if (!router || !dest || !here || !router.byName[dest] || here.name === dest) return;
-    pf.route = router.findRoute(here.name, dest, tile, { waysOnly: pf.waysOnly });
+    pf.route = router.findRoute(here.name, dest, tile, { portals: pf.portals, waysOnly: pf.waysOnly });
   }
   const later = (ms, fn) => { clearTimeout(settle); settle = setTimeout(fn, ms); };
   function tick() {
@@ -130,6 +131,7 @@ export function initPathfinder() {
     '#fsbPf .pfModes button.on{background:#7a5a2c;color:#fbf3dc;}' +
     '#fsbPf .pfOpt{display:flex;align-items:center;gap:6px;padding:2px 10px 0;font-size:11px;color:#5b4020;cursor:pointer;user-select:none;}' +
     '#fsbPf .pfOpt input{position:absolute;opacity:0;pointer-events:none;}' +
+    '#fsbPf .pfOpt.off{opacity:.45;cursor:default;}' +
     '#fsbPf .pfHelp{text-decoration:underline dotted;text-underline-offset:2px;cursor:help;}' +
     '#fsbPf .pfSwitch{cursor:pointer;position:relative;flex:none;box-sizing:content-box;width:26px;height:14px;border:1px solid #4f3717;border-radius:8px;background:#d8c18a;transition:background .15s;}' +
     '#fsbPf .pfSwitch::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#4f3717;transition:transform .15s;}' +
@@ -173,6 +175,7 @@ export function initPathfinder() {
     '#fsbPf .pfFoot a{color:#6b3d00;}' +
     '#fsbPfBtn{width:17px;height:17px;padding:0;margin:0 0 0 3px;box-sizing:border-box;border:1px solid #4f3717;border-radius:3px;background:center / 16px no-repeat var(--fsbPfIcon),#e9d6a8;cursor:pointer;}' +
     '#fsbPfBtn:hover{filter:brightness(1.12);}#fsbPfBtn.fsbBeside{margin-left:8px;vertical-align:middle;}' +
+    '#fsbPfBtn.fsbFloat{position:fixed;top:8px;right:8px;z-index:9000;width:26px;height:26px;margin:0;background-size:22px,auto;}' +
     '#fsbPf .pfRest,#fsbPf .pfSugg{scrollbar-width:thin;scrollbar-color:#a98a52 #e3cf9c;}';
   document.head.appendChild(css);
 
@@ -209,15 +212,22 @@ export function initPathfinder() {
       '<div class="pfHead"><span><i class="pfLogo"></i>Path Finder</span><button type="button" class="pfX" title="Close">&times;</button></div>' +
       '<div class="pfModes" role="group" aria-label="Search by"><button type="button" data-mode="name">Name</button><button type="button" data-mode="level">Level</button></div>' +
       '<div class="pfSearch"><input type="text" autocomplete="off" spellcheck="false"><button type="button" class="pfClear" title="Clear the destination">Clear</button><ul class="pfSugg" role="listbox" hidden></ul></div>' +
-      '<label class="pfOpt"><input type="checkbox" role="switch"><span class="pfSwitch"></span>Only the Cathedral of Ways portal ' +
+      '<label class="pfOpt"><input type="checkbox" role="switch" data-opt="portals"><span class="pfSwitch"></span>Use portals ' +
+      '<span class="pfHelp tip-static" data-tipped="Use portals to reach other world maps. Off: the way never uses a portal.">[?]</span></label>' +
+      '<label class="pfOpt"><input type="checkbox" role="switch" data-opt="ways"><span class="pfSwitch"></span>Only the Cathedral of Ways portal ' +
       '<span class="pfHelp tip-static" data-tipped="All the other portals, except the one in the Cathedral of Ways, are ignored when working out the way.">[?]</span></label>' +
       '<div class="pfBody"></div>' +
       '<div class="pfFoot"><a href="' + PF_SITE + '" target="_blank" rel="noopener">Fallen Sword Path Finder website ↗</a></div>';
     container().appendChild(panel);
     const input = panel.querySelector('.pfSearch input');
     const sugg = panel.querySelector('.pfSugg');
-    const ways = panel.querySelector('.pfOpt input');
+    const ways = panel.querySelector('input[data-opt="ways"]');
+    const portals = panel.querySelector('input[data-opt="portals"]');
+    // "only the Cathedral of Ways portal" means nothing while portals are off
+    const syncWays = () => { ways.disabled = !pf.portals; ways.closest('.pfOpt').classList.toggle('off', !pf.portals); };
     ways.checked = pf.waysOnly;
+    portals.checked = pf.portals;
+    syncWays();
     input.value = pf.dest;
     const setMode = (m) => {
       pf.mode = m;
@@ -293,8 +303,15 @@ export function initPathfinder() {
       recompute();
       renderBody();
     });
-    // a click on the [?] must not flip the switch
-    panel.querySelector('.pfHelp').addEventListener('click', (e) => e.preventDefault());
+    portals.addEventListener('change', () => {
+      pf.portals = portals.checked;
+      remember('pathfinderPortals', pf.portals ? '1' : '0');
+      syncWays();
+      recompute();
+      renderBody();
+    });
+    // a click on a [?] must not flip its switch
+    panel.querySelectorAll('.pfHelp').forEach((h) => h.addEventListener('click', (e) => e.preventDefault()));
     panel.querySelector('.pfX').addEventListener('click', closePanel);
     panel.querySelector('.pfBody').addEventListener('click', (e) => {
       if (e.target.closest('a[href="#retry"]')) { e.preventDefault(); loadData(); }
@@ -400,31 +417,31 @@ export function initPathfinder() {
   btn.className = 'tip-static';
   btn.setAttribute('data-tipped', 'Find the way to an area');
   btn.addEventListener('click', () => { if (pf.open) closePanel(); else openPanel(); });
+  // Where the page has no (visible) button row or area name, as on some world maps, the button floats in the corner of the page instead.
   function placeButton() {
     const box = document.getElementById('fshWorldButtonContainer');
     const title = document.getElementById('worldName');
-    const host = box || title;
-    if (!host) return;
-    btn.classList.toggle('fsbBeside', !box);
+    const host = [box, title].find((h) => h && h.offsetParent !== null);
+    if (!host) {
+      if (btn.parentNode !== document.body || !btn.classList.contains('fsbFloat')) { btn.classList.add('fsbFloat'); document.body.appendChild(btn); }
+      return;
+    }
+    btn.classList.remove('fsbFloat');
+    btn.classList.toggle('fsbBeside', host !== box);
     const wiki = document.getElementById('fsbWikiBtn');
     const after = wiki && wiki.parentNode === host ? wiki : null; // before the wiki button when it is there
     if (btn.parentNode !== host || btn.nextElementSibling !== after) host.insertBefore(btn, after);
   }
-  let tries = 0;
-  const wait = setInterval(() => {
-    tries++;
-    if (document.getElementById('worldName')) {
-      clearInterval(wait);
-      placeButton();
-      const mo = new MutationObserver(placeButton);
-      const wc = document.getElementById('worldContainer');
-      if (wc) mo.observe(wc, { childList: true });
-      mo.observe(document.getElementById('worldName'), { childList: true });
-      const box = document.getElementById('fshWorldButtonContainer');
-      if (box) mo.observe(box, { childList: true });
-      if (pf.open) openPanel();
-    } else if (tries > 40) {
-      clearInterval(wait); // not the world page
-    }
-  }, 300);
+  const watched = new Set();
+  function watch() { // the other scripts and the game rebuild these elements: the button is put back right away
+    const mo = new MutationObserver(placeButton);
+    ['worldContainer', 'worldName', 'fshWorldButtonContainer'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && !watched.has(el)) { watched.add(el); mo.observe(el, { childList: true }); }
+    });
+  }
+  placeButton();
+  watch();
+  setInterval(() => { placeButton(); watch(); }, 1000); // also catches the elements that appear later, or that are hidden and shown
+  if (pf.open) openPanel();
 }
