@@ -1,6 +1,10 @@
 // The install page (index.html): what the toolkit does, and the Install button for the loader.
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// The visits of this page are counted with GoatCounter (no cookies, no personal data). Put the code of your GoatCounter site here
+// (https://CODE.goatcounter.com): while it is empty nothing is counted and the page does not mention it.
+const COUNTER_CODE = 'fst';
+
 // what the toolkit does, for the page people read before installing
 const SECTIONS = [
   ['Backpack', [
@@ -80,7 +84,7 @@ ${SECTIONS.map(([title, items]) => `  <div class="card">
 ${items.map((i) => `      <li>${esc(i)}</li>`).join('\n')}
     </ul>
   </div>`).join('\n')}
-  <small>Built ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC &middot; loader ${esc(loaderVersion)}</small>
+  <small>Built ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC &middot; loader ${esc(loaderVersion)}${COUNTER_CODE ? ' &middot; visits of this page are counted anonymously (no cookies)' : ''}</small>
 </main>
 <script>
   // the loader announces itself on this page: show whether it is installed
@@ -90,7 +94,8 @@ ${items.map((i) => `      <li>${esc(i)}</li>`).join('\n')}
     el.textContent = v ? 'Installed (loader ' + v + ')' : '';
   }, 800);
 </script>
-</body>
+${COUNTER_CODE ? `<script data-goatcounter="https://${esc(COUNTER_CODE)}.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+` : ''}</body>
 </html>
 `;
 }
