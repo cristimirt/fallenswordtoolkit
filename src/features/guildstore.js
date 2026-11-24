@@ -16,7 +16,7 @@ import { searchSelect } from './searchselect.js';
 // Requests, all the game's own:
 //   index.php?cmd=guild&subcmd=fetchinv                                the store: a (store id), b (item id), n, t (type), l (level), tg, c (tag cost), eq, s (set), extra
 //   index.php?cmd=export&subcmd=guild_store&inc_tagged=1                every tagged item of the guild: the store (player_id -1) and the members' bags; rarity, craft, forge, stats
-//   index.php?cmd=export&subcmd=guild_members&guild_id=..                the members (id, username)
+//   index.php?cmd=export&subcmd=guild_members&guild_id=..                the members (id, username, level, rank, last login)
 //   index.php?cmd=guild&subcmd=inventory&subcmd2=takeitem&guildstore_id=..&ajax=1      take one item ({ r: 1, m } when it did not work)
 //   index.php?cmd=guild&subcmd=inventory&subcmd2=storeitems             the page that lists what can be deposited (storeIndex[] = inventory ids)
 //   app.php?browser=1&v=9&cmd=guild&subcmd=inventory&subcmd2=dostoreitems&items[]=<inventory id>   deposit ({ s: true } or { e: { message } })
@@ -24,6 +24,12 @@ const TYPES = ['Helmet', 'Armor', 'Gloves', 'Boots', 'Weapon', 'Shield', 'Ring',
 const CDN = 'https://cdn2.fallensword.com/';
 const CRAFT_NAMES = ['Perfect', 'Excellent', 'Very Good', 'Good', 'Average', 'Poor', 'Very Poor'];
 const UNCRAFTED_COLOR = '#888888';
+// a member's item that is equipped: a small shield with a sword on it (the tooltip says what it is)
+// guild tagged: a small padlock
+const LOCK = '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2" fill="none" stroke="#3b2a14" stroke-width="1.6"/><rect x="2.5" y="7" width="11" height="8" rx="1.5" fill="#8a6a38" stroke="#3b2a14" stroke-width="1"/><circle cx="8" cy="10.5" r="1.2" fill="#f6e8c4"/></svg>';
+const EQ_BADGE = ' <span class="gsEq" title="Equipped"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1 14 3v5c0 3.4-2.9 5.8-6 7-3.1-1.2-6-3.6-6-7V3z" fill="#8a6a38" stroke="#3b2a14" stroke-width="1"/><path d="M5.2 11.2 10.6 4.4M4.6 9l3.2 3.2" fill="none" stroke="#f6e8c4" stroke-width="1.4" stroke-linecap="round"/></svg></span>';
+// the craft qualities in colours that can be read on the parchment (the game's own colours are for a dark page)
+const CRAFT_DARK = ['#8a7400', '#b07000', '#c05a00', '#c03000', '#b00000', '#880000', '#600000'];
 // craft quality of an item of the export ("Excellent +5": the quality is the words before the number); -1 = not crafted / not known
 const craftIdx = (txt) => { const t = String(txt || '').replace(/\s*\+?\d+\s*$/, '').trim().toLowerCase(); return CRAFT_NAMES.findIndex((n) => n.toLowerCase() === t); };
 const PER_PAGE = 50;
@@ -47,6 +53,7 @@ export function initGuildStore() {
   const POS_KEY = FSB + 'gsPos';
   const css = document.createElement('style');
   css.textContent =
+    '#fsbGsOv{position:fixed;left:0;top:0;right:0;bottom:0;z-index:99989;background:rgba(10,6,2,.6);}' +
     '#fsbGs{position:fixed;z-index:99990;width:780px;max-width:calc(100vw - 8px);max-height:calc(100vh - 8px);display:flex;flex-direction:column;box-sizing:border-box;background:#d6b277;color:#3b2a14;border:1px solid #20170396;border-radius:4px;box-shadow:0 0 8px 0 #000;font:12px Arial,sans-serif;}' +
     '#fsbGs .gsHead{cursor:move;user-select:none;touch-action:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 8px;background:#b79862;font-weight:bold;font-size:13px;border-radius:3px 3px 0 0;}' +
     '#fsbGs .gsHead .gsLinks{font-weight:normal;font-size:11px;}#fsbGs .gsHead a{color:#5a3a10;}' +
@@ -77,8 +84,24 @@ export function initGuildStore() {
     '#fsbGs tr:hover td{background:#f9efd2;}' +
     '#fsbGs td.c{width:20px;}#fsbGs td.i{width:26px;padding:1px 3px;}#fsbGs td.i img{display:block;width:24px;height:24px;object-fit:contain;}' +
     '#fsbGs td.n a{color:inherit;text-decoration:none;font-weight:bold;cursor:help;}' +
+    '#fsbGs .bpAhHtml{display:inline-flex;flex:none;line-height:0;}#fsbGs .bpBuffBox .bpBoxSw.bpAhHtml{margin-top:-8px;left:2px;}' +
+    '#fsbGs .gsTypes{display:flex;flex-wrap:wrap;gap:5px;}' +
+    '#fsbGs .gsTyp{position:relative;box-sizing:border-box;margin:0;padding:2px;cursor:pointer;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5);}' +
+    '#fsbGs .gsTyp:hover{background:#f0e3bf;}#fsbGs .gsTyp.on{background:#c8dc86;border-color:#4f6f12;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}#fsbGs .gsTyp.z:not(.on){opacity:.4;}' +
+    '#fsbGs .gsTyp i{display:block;width:18px;height:18px;background:url(' + CDN + 'ui/misc/backpack_tabs2.png) 0 0 no-repeat;}' +
+    '#fsbGs .gsTyp i.gsTx{background:none;font:bold 9px/18px Arial,sans-serif;color:#3b2a14;text-align:center;font-style:normal;}' +
+    '#fsbGs .gsCnt{position:absolute;right:-4px;bottom:-5px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:#2b2620;border:1px solid #8a6a3a;color:#fff;font:bold 9px/11px Arial,sans-serif;text-align:center;pointer-events:none;}' +
+    '#fsbGs .gsEq{display:inline-block;vertical-align:middle;margin-left:3px;line-height:0;cursor:default;}' +
+    '#fsbGs .bpBuffBox.bpAh{display:inline-block;}#fsbGs .bpBuffBox.bpAh input[type=text]{background:#e8c88e;border:1px solid #20170396;border-radius:4px;height:22px;padding:0 20px 0 6px;font:bold 11px Arial,sans-serif;color:#3b2a14;box-shadow:0 0 3px 0 #000;}' +
+    '#fsbGs .bpBuffBox.bpAh.bpHasSw input[type=text]{padding-left:24px;}#fsbGs .bpBuffBox.bpAh input[type=text]:hover,#fsbGs .bpBuffBox.bpAh input[type=text]:focus{background:#f0d6a2;border-color:#3b2a14;outline:none;}' +
+    '#fsbGs a.gsPl{color:#5a3a10;text-decoration:underline dotted;cursor:pointer;}#fsbGs a.gsPl:hover{color:#8a1f0f;}' +
     '#fsbGs td.n small{display:block;font-weight:normal;opacity:.75;}' +
     '#fsbGs td.num{text-align:right;}' +
+    // the hellforge level: a diamond with the number inside
+    '#fsbGs td.gsTg{text-align:center;line-height:0;}#fsbGs td.gsHfc{text-align:center;}#fsbGs .gsHf{position:relative;display:inline-block;width:22px;height:22px;vertical-align:middle;}' +
+    '#fsbGs .gsHf i,#fsbGs .gsHfRow i{position:absolute;left:3px;top:3px;width:16px;height:16px;box-sizing:border-box;transform:rotate(45deg);background:conic-gradient(from -45deg,rgb(255,142,54) 0deg,rgb(255,142,54) 90deg,rgb(204,82,18) 90deg,rgb(204,82,18) 180deg,rgb(232,104,30) 180deg,rgb(232,104,30) 270deg,rgb(255,167,92) 270deg,rgb(255,167,92) 360deg);box-shadow:0 0 0 1px #000,1px 1px 0 rgba(255,240,210,.3) inset;}' +
+    '#fsbGs .gsHfRow{display:inline-flex;align-items:center;}#fsbGs .gsHfRow i{position:static;display:inline-block;width:9px;height:9px;margin:3px 5px;}' +
+    '#fsbGs .gsHf b{position:absolute;left:0;right:0;top:0;line-height:22px;text-align:center;color:#fff;font:bold 11px/22px Arial,sans-serif;text-shadow:0 0 2px #000;}' +
     '#fsbGs .gsFoot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;margin-top:6px;}' +
     '#fsbGs .gsMsg{margin-top:4px;min-height:16px;}#fsbGs .gsMsg.bad{color:#a00000;}#fsbGs .gsMsg.ok{color:#2d6a1c;}' +
     '#fsbGs .gsEmpty{padding:14px;text-align:center;opacity:.8;}' +
@@ -92,6 +115,11 @@ export function initGuildStore() {
     '#fsbGs .gsGrid.s50{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));}#fsbGs .gsGrid.s50 .inventory-item-slot{zoom:.5;}' +
     '#fsbGs .gsTile .inventory-item-slot{margin:6px 0 4px;cursor:pointer;}' +
     '#fsbGs .gsTile .gsPick{position:absolute;top:3px;left:3px;margin:0;}' +
+    // the selection boxes in the colours of the window: parchment when empty, brown with a light tick when selected
+    '#fsbGs input.gsPick,#fsbGs #gsAll{-webkit-appearance:none;appearance:none;width:15px;height:15px;margin:0;vertical-align:middle;cursor:pointer;background:#f6e8c4 center/11px 11px no-repeat;border:1px solid #20170396;border-radius:3px;box-shadow:inset 0 1px 2px #20170333;}' +
+    '#fsbGs input.gsPick:hover,#fsbGs #gsAll:hover{background-color:#fbf1d6;border-color:#3b2a14;}' +
+    '#fsbGs input.gsPick:checked,#fsbGs #gsAll:checked{background-color:#8a6a38;border-color:#3b2a14;background-image:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 12 12%22%3E%3Cpolyline points=%222,6.5 5,9.5 10,2.5%22 fill=%22none%22 stroke=%22%23f6e8c4%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E");}' +
+    '#fsbGs input.gsPick:focus-visible,#fsbGs #gsAll:focus-visible{outline:2px solid #5f8f2a;outline-offset:1px;}' +
     '#fsbGs .gsRars{display:inline-flex;align-items:center;gap:3px;}' +
     '#fsbGs .gsRar{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;cursor:pointer;border:1px solid transparent;border-radius:3px;}' +
     '#fsbGs .gsRar i{display:block;width:10px;height:10px;transform:rotate(45deg);box-shadow:0 0 0 1px #000;}' +
@@ -102,7 +130,7 @@ export function initGuildStore() {
 
   let box = null;
   let tab = recall('gsTab') === 'put' ? 'put' : 'take';
-  const F = { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '', buff: '' };
+  const F = { q: '', types: new Set(), rars: new Set(), min: '', max: '', set: '', eq: '', dup: '', equipped: '', tagged: '', hf: '', craft: '', buff: '', player: '' };
   let withMembers = recall('gsMembers') === '1';
   let sort = { k: 'name', d: 1 };
   let view = recall('gsView') === 'tiles' ? 'tiles' : 'list'; // the list, or big icons with the name under them
@@ -124,16 +152,47 @@ export function initGuildStore() {
     box.style.top = y + 'px';
   };
   const setMsg = (t, cls) => { const m = box && box.querySelector('.gsMsg'); if (m) { m.className = 'gsMsg' + (cls ? ' ' + cls : ''); m.textContent = t; } };
+  // while the window is open the page behind it is covered and does not scroll (the lists inside the window still do)
+  let overlay = null, pageLock = null;
+  function lockPage() {
+    overlay = document.createElement('div');
+    overlay.id = 'fsbGsOv';
+    overlay.addEventListener('click', () => { if (!busy) close(); }); // a click outside the window closes it
+    document.body.appendChild(overlay);
+    pageLock = [document.documentElement.style.overflow, document.body.style.overflow];
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+  function unlockPage() {
+    if (overlay) { overlay.remove(); overlay = null; }
+    if (pageLock) { document.documentElement.style.overflow = pageLock[0]; document.body.style.overflow = pageLock[1]; pageLock = null; }
+  }
   function close() {
     seq++;
     if (box) { box.remove(); box = null; }
+    unlockPage();
     document.removeEventListener('keydown', onKey);
   }
   const onKey = (e) => { if (e.key === 'Escape' && !busy) close(); };
 
   // ---------- data -> rows ----------
   const cleanSet = (s) => String(s || '').replace(/\\'/g, "'");
-  const nameOfMember = (id) => (members && members[id]) || ('Player ' + id);
+  const nameOfMember = (id) => (members && members[id] && members[id].name) || ('Player ' + id);
+  // "3 hours ago" from the unix time of the last login
+  const ago = (t) => {
+    if (!t) return 'unknown';
+    const s = Math.max(0, Date.now() / 1000 - (t > 1e11 ? t / 1000 : t));
+    const u = [[86400, 'day'], [3600, 'hour'], [60, 'minute']].find((x) => s >= x[0]);
+    if (!u) return 'just now';
+    const n = Math.floor(s / u[0]);
+    return n + ' ' + u[1] + (n === 1 ? '' : 's') + ' ago';
+  };
+  // the name of a member: a link to the profile, and on hover the level, the rank in the guild and the last activity
+  const playerLink = (id) => {
+    const m = members && members[id];
+    const tip = m ? '<div style="white-space:nowrap"><b>' + esc(m.name) + '</b><br>Level ' + esc(m.level) + '<br>Rank: ' + esc(m.rank || '?') + '<br>Last activity: ' + esc(ago(m.last)) + '</div>' : '';
+    return '<a href="' + esc(withFst('/index.php?cmd=profile&player_id=' + id)) + '" target="_blank" rel="noopener" class="gsPl' + (tip ? ' tip-static' : '') + '"' + (tip ? ' data-tipped="' + esc(tip).replace(/"/g, '&quot;') + '"' : '') + '>' + esc(nameOfMember(id)) + '</a>';
+  };
   function storeRows() {
     const byInv = new Map(((exp && exp.items) || []).map((o) => [o.inv_id, o]));
     const out = (store || []).map((s) => {
@@ -150,7 +209,7 @@ export function initGuildStore() {
         const st = o.stats || {};
         out.push({
           id: o.inv_id, item: o.item_id, name: o.item_name, type: o.type, lvl: st.min_level, rar: o.rarity, set: cleanSet(st.set_name), tagged: true,
-          eq: o.type >= 0 && o.type <= 8, cr: craftIdx(o.craft), craft: o.craft || '', forge: o.forge || 0, owner: o.player_id, worn: !!o.equipped,
+          eq: o.type >= 0 && o.type <= 8, cr: craftIdx(o.craft), craft: o.craft || '', forge: o.forge || 0, owner: o.player_id, equipped: !!o.equipped,
         });
       });
     }
@@ -224,27 +283,30 @@ export function initGuildStore() {
   }
 
   // ---------- filtering and sorting ----------
-  function visible() {
+  function visible(noType) {
     const q = norm(F.q).split(/\s+/).filter(Boolean);
     const dupCount = new Map();
     rows.forEach((r) => dupCount.set(r.item, (dupCount.get(r.item) || 0) + 1));
     const min = F.min === '' ? null : parseInt(F.min, 10), max = F.max === '' ? null : parseInt(F.max, 10);
     let out = rows.filter((r) => {
       if (q.length) { const hay = norm(r.name + ' ' + r.set + ' ' + (r.owner >= 0 ? nameOfMember(r.owner) : '')); if (!q.every((w) => hay.indexOf(w) !== -1)) return false; }
-      if (F.type !== '' && r.type !== +F.type) return false;
+      if (!noType && F.types.size && !F.types.has(r.type)) return false; // the selected types: any of them
+      if (F.player !== '' && r.owner !== +F.player) return false;
       if (F.rars.size && !F.rars.has(r.rar || 0)) return false;
       if (min !== null && !(r.lvl >= min)) return false;
       if (max !== null && !(r.lvl <= max)) return false;
-      if (F.set && !r.set) return false;
-      if (F.eq && !r.eq) return false;
-      if (F.dup && (dupCount.get(r.item) || 0) < 2) return false;
+      const yn = (v, has) => (v === 'yes' ? !has : v === 'no' && has); // a filter of yes / no: true = the item does not pass
+      if (yn(F.set, !!r.set) || yn(F.eq, !!r.eq) || yn(F.equipped, !!r.equipped)) return false;
+      if (F.tagged === 'yes' ? !r.tagged : F.tagged === 'no' && r.tagged) return false;
+      if (yn(F.dup, (dupCount.get(r.item) || 0) >= 2)) return false;
       if (F.hf === 'none' ? r.forge > 0 : F.hf !== '' && r.forge !== +F.hf) return false;
       if (F.craft === 'none' ? r.cr >= 0 : F.craft !== '' && r.cr !== +F.craft) return false;
       if (F.buff !== '' && !(buffsOf(r) || []).some((b) => b[0] === F.buff)) return false;
       return true;
     });
+    if (noType) return out; // only counted
     const k = sort.k, d = sort.d;
-    const val = (r) => (k === 'name' ? norm(r.name) : k === 'type' ? r.type : k === 'lvl' ? (r.lvl == null ? -1 : r.lvl) : k === 'rar' ? (r.rar == null ? -1 : r.rar) : k === 'owner' ? norm(r.owner >= 0 ? nameOfMember(r.owner) : '') : 0);
+    const val = (r) => (k === 'name' ? norm(r.name) : k === 'type' ? r.type : k === 'lvl' ? (r.lvl == null ? -1 : r.lvl) : k === 'rar' ? (r.rar == null ? -1 : r.rar) : k === 'owner' ? norm(r.owner >= 0 ? nameOfMember(r.owner) : '') : k === 'cr' ? r.cr : k === 'forge' ? r.forge || 0 : 0);
     out = out.map((r, i) => [r, i]).sort((a, b) => { const x = val(a[0]), y = val(b[0]); return (x < y ? -1 : x > y ? 1 : a[1] - b[1]) * d; }).map((p) => p[0]);
     return out;
   }
@@ -260,36 +322,50 @@ export function initGuildStore() {
   const sw = (id, on, label, tip) =>
     '<label><span class="gsSw"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="trk"></span></span>' + label +
     (tip ? ' <span class="gsHelp tip-static" data-tipped="' + esc('<div style="max-width:240px;white-space:normal">' + tip + '</div>').replace(/"/g, '&quot;') + '">[?]</span>' : '') + '</label>';
-  const HF_OPT = [['', 'Hellforge: any'], ['none', 'Not hellforged'], ['1', 'Hellforge 1'], ['2', 'Hellforge 2'], ['3', 'Hellforge 3'], ['4', 'Hellforge 4'], ['5', 'Hellforge 5']];
-  const CRAFT_OPT = [['', 'Craft: any'], ['none', 'Not crafted']].concat(CRAFT_NAMES.map((n, i) => [String(i), n]));
+  const HF_OPT = [['', 'Hell Forged: any'], ['none', 'Not hell forged'], ['1', 'Hell Forge 1'], ['2', 'Hell Forge 2'], ['3', 'Hell Forge 3'], ['4', 'Hell Forge 4'], ['5', 'Hell Forge 5']];
+  const CRAFT_OPT = [['', 'Crafted: any'], ['none', 'Not crafted']].concat(CRAFT_NAMES.map((n, i) => [String(i), n]));
   const opts = (list, cur) => list.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
+  const ynSel = (id, cur, labels) => '<select id="' + id + '">' + opts([['', labels[0]], ['yes', labels[1]], ['no', labels[2]]], cur) + '</select>';
+  // the item type buttons (the game's own icons of the guild store window), each with how many items it would show under the other filters
+  const ICON_TYPES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16];
+  const TYPE_X = (t) => -20 * (t > 11 ? t - 1 : t); // the icons are in the sprite in this order: type 11 has none
+  function typesHtml() {
+    // every type the game has an icon for (there are no components in a guild store), also those with no item; another type in the list is added
+    const have = Array.from(new Set(ICON_TYPES.concat(rows.map((r) => r.type)))).sort((a, b) => a - b);
+    const left = {};
+    visible(true).forEach((r) => { left[r.type] = (left[r.type] || 0) + 1; });
+    const total = Object.keys(left).reduce((n, t) => n + left[t], 0);
+    const btn = (t, name, n, inner) => '<button type="button" class="gsTyp' + ((t === '' ? !F.types.size : F.types.has(t)) ? ' on' : '') + (n ? '' : ' z') + '" data-t="' + t + '" title="' + esc(name) + '">' + inner + '<span class="gsCnt">' + n + '</span></button>';
+    return btn('', 'All types', total, '<i style="background-position:-340px 0"></i>') +
+      have.map((t) => btn(t, TYPES[t] || 'Type ' + t, left[t] || 0, ICON_TYPES.indexOf(t) === -1 ? '<i class="gsTx">' + esc((TYPES[t] || '?').slice(0, 3)) + '</i>' : '<i style="background-position:' + TYPE_X(t) + 'px 0"></i>')).join('');
+  }
   function barHtml() {
-    const counts = {};
-    rows.forEach((r) => { counts[r.type] = (counts[r.type] || 0) + 1; });
-    const tOpts = '<option value="">All types</option>' + Object.keys(counts).map(Number).sort((a, b) => a - b)
-      .map((t) => '<option value="' + t + '"' + (String(t) === String(F.type) ? ' selected' : '') + '>' + esc(TYPES[t] || 'Type ' + t) + ' (' + counts[t] + ')</option>').join('');
     const bc = {};
     rows.forEach((r) => { (buffsOf(r) || []).forEach((b) => { bc[b[0]] = (bc[b[0]] || 0) + 1; }); });
     const pend = rows.some((r) => r.type === 15 && !tipBuffs.has(r.id));
     const names = ALL_BUFFS.concat(Object.keys(bc).filter((b) => ALL_BUFFS.indexOf(b) === -1)).sort((a, b) => a.localeCompare(b));
     const bOpts = '<option value="">Buff: any</option>' + names
       .map((b) => '<option value="' + esc(b) + '"' + (b === F.buff ? ' selected' : '') + '>' + esc(b) + (bc[b] ? ' (' + bc[b] + ')' : '') + '</option>').join('');
+    const own = {};
+    ((exp && exp.items) || []).forEach((o) => { if (o.player_id !== -1) own[o.player_id] = (own[o.player_id] || 0) + 1; });
+    const pOpts = '<option value="">Player: any</option>' + Object.keys(members || {}).sort((a, b) => nameOfMember(a).localeCompare(nameOfMember(b), undefined, { sensitivity: 'base' }))
+      .map((id) => '<option value="' + id + '"' + (String(id) === String(F.player) ? ' selected' : '') + '>' + esc(nameOfMember(id)) + (own[id] ? ' (' + own[id] + ')' : '') + '</option>').join('');
     const rar = RARITIES.map((r, i) => '<span class="gsRar' + (F.rars.has(i) ? ' on' : '') + '" role="button" tabindex="0" data-r="' + i + '" title="' + esc(r[0]) + '"><i style="background:' + r[1] + '"></i></span>').join('');
-    return '<div class="gsBar">' +
+    return '<div class="gsBar"><span class="gsTypes">' + typesHtml() + '</span></div><div class="gsBar">' +
       '<input type="text" id="gsQ" placeholder="Search name' + (tab === 'take' && withMembers ? ' or member' : '') + '" value="' + esc(F.q) + '" autocomplete="off" spellcheck="false">' +
-      '<select id="gsType">' + tOpts + '</select>' +
       '<span>Level <input type="number" id="gsMin" min="0" placeholder="min" value="' + esc(F.min) + '"> - <input type="number" id="gsMax" min="0" placeholder="max" value="' + esc(F.max) + '"></span>' +
       '<span class="gsRars">Quality: ' + rar + '</span>' +
       '</div><div class="gsBar">' +
-      '<select id="gsHf">' + opts(HF_OPT, F.hf) + '</select><select id="gsCraft">' + opts(CRAFT_OPT, F.craft) + '</select><select id="gsBuff" title="Only the potions (composed or not) that give this buff">' + bOpts + '</select>' + (pend ? '<small id="gsBuffMsg">reading composed potions...</small>' : '') +
-      sw('gsSet', F.set, 'Set') + sw('gsEq', F.eq, 'Equippable') + sw('gsDup', F.dup, 'Duplicates', 'Only items of which there are two or more in this list.') +
-      (tab === 'take' ? sw('gsMem', withMembers, 'Members&#39; items', 'Also list the guild tagged items that are in the backpacks of the other members, the ones on the Guild Inventory page. They cannot be taken from here: the list shows who has them. Worn items are included.') : '') +
+      '<select id="gsHf">' + opts(HF_OPT, F.hf) + '</select><select id="gsCraft">' + opts(CRAFT_OPT, F.craft) + '</select><select id="gsBuff" title="Only the potions (composed or not) that give this buff">' + bOpts + '</select>' + (tab === 'take' && members ? '<select id="gsPlayer" title="Only the items this guild member has">' + pOpts + '</select>' : '') + (pend ? '<small id="gsBuffMsg">reading composed potions...</small>' : '') +
+      ynSel('gsSet', F.set, ['Set: Any', 'Set item', 'Not a set item']) + ynSel('gsEq', F.eq, ['Equippable: Any', 'Equippable', 'Not equippable']) + '<select id="gsTagged">' + opts([['', 'Guild Tagged: Any'], ['yes', 'Tagged'], ['no', 'Untagged']], F.tagged) + '</select>' + ynSel('gsDup', F.dup, ['Duplicates: Any', 'Duplicates', 'No duplicates']) +
+      (tab === 'take' ? sw('gsMem', withMembers, 'Members&#39; items', 'Also list the guild tagged items that are in the backpacks of the other members, the ones on the Guild Inventory page.') : '') +
+      (tab === 'take' && withMembers ? ynSel('gsEquipped', F.equipped, ['Equipped: Any', 'Equipped', 'Not equipped']) : '') +
       '</div><div class="gsBar">' +
       '<button type="button" class="gsBtn" id="gsClear">Clear filters</button><button type="button" class="gsBtn" id="gsReload" title="Load the list again">Reload</button>' +
-      '<span class="gsView"><button type="button" class="gsBtn' + (view === 'list' ? ' on' : '') + '" data-view="list" title="List">List</button><button type="button" class="gsBtn' + (view === 'tiles' ? ' on' : '') + '" data-view="tiles" title="Big icons with the name under them">Tiles</button></span>' +
-      (view === 'tiles' ? '<span>Sort <select id="gsSort">' + [['name', 'Name'], ['type', 'Type'], ['lvl', 'Level'], ['rar', 'Quality']].concat(tab === 'take' && withMembers ? [['owner', 'In']] : [])
+      '<span>Sort <select id="gsSort">' + [['name', 'Name'], ['type', 'Type'], ['lvl', 'Level'], ['rar', 'Quality'], ['cr', 'Craft'], ['forge', 'Hell Forge']].concat(tab === 'take' && withMembers ? [['owner', 'Location']] : [])
         .map((o) => '<option value="' + o[0] + '"' + (sort.k === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select> <button type="button" class="gsBtn" id="gsDir" title="Reverse the order">' + (sort.d > 0 ? '▲' : '▼') + '</button></span>' +
-        '<span>Size <select id="gsSize">' + [50, 75, 100].map((z) => '<option value="' + z + '"' + (size === z ? ' selected' : '') + '>' + z + '%</option>').join('') + '</select></span>' : '') +
+      '<span class="gsView"><button type="button" class="gsBtn' + (view === 'list' ? ' on' : '') + '" data-view="list" title="List">List</button><button type="button" class="gsBtn' + (view === 'tiles' ? ' on' : '') + '" data-view="tiles" title="Big icons with the name under them">Tiles</button></span>' +
+        (view === 'tiles' ? '<span>Size <select id="gsSize">' + [50, 75, 100].map((z) => '<option value="' + z + '"' + (size === z ? ' selected' : '') + '>' + z + '%</option>').join('') + '</select></span>' : '') +
       '</div>';
   }
   const th = (k, label) => '<th class="s" data-k="' + k + '">' + label + (sort.k === k ? (sort.d > 0 ? ' ▲' : ' ▼') : '') + '</th>';
@@ -301,12 +377,17 @@ export function initGuildStore() {
     return '<a href="#" class="inventory-item-slot inventory-item-size-2x3 tip-dynamic" data-tipped="' + esc(tipOf(r)) + '"><span class="item-rarity-wrapper" data-rarity="' + (r.rar || 0) + '" style="--rarity-color:' + ((RARITIES[r.rar] || [0, '#FFFFFF'])[1]) + ';' + (craftCol ? '--craft-color:' + craftCol + ';' : '') + '">' +
       '<span class="inventory-item inventory-item-size-2x3" style="background-image:url(' + esc(imgOf(r)) + ')"></span>' + hf + '</span></a>';
   };
+  // the buttons of a row: the store's items are taken, the backpack's deposited, the other members' items taken straight into the
+  // backpack or recalled into the guild store
+  const btnsOf = (r) => (r.owner === -1 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '" title="Take to inventory">BP</button>'
+    : r.owner === -2 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '">Deposit</button>'
+      : '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '" title="Take to inventory">BP</button> <button type="button" class="gsBtn gsRecall" data-id="' + r.id + '" title="Recall to Guild Store">GS</button>');
   function listHtml(list) {
     if (!list.length) return '<div class="gsEmpty">' + (rows.length ? 'No item matches the filters.' : tab === 'take' ? 'The guild store is empty.' : 'Nothing in your backpack can be deposited.') + '</div>';
     const from = page * perPage();
     const part = list.slice(from, from + perPage());
     const showOwner = tab === 'take' && withMembers;
-    const canSel = (r) => r.owner < 0;
+    const canSel = () => true;
     if (view === 'tiles') {
       let g = '<div class="gsGrid' + (size !== 100 ? ' s' + size : '') + '">';
       part.forEach((r) => {
@@ -316,32 +397,35 @@ export function initGuildStore() {
           slotHtml(r) +
           '<a class="tip-dynamic gsTn" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' +
           (sub ? '<small>' + esc(sub) + '</small>' : '') +
-          (showOwner ? '<small>' + (r.owner === -1 ? 'Guild store' : esc(nameOfMember(r.owner)) + (r.worn ? ' (worn)' : '')) + '</small>' : '') +
-          (r.owner === -1 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '">Take</button>' : r.owner === -2 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '">Deposit</button>' : '') + '</div>';
+          (showOwner ? '<small>' + (r.owner === -1 ? 'Guild store' : playerLink(r.owner) + (r.equipped ? EQ_BADGE : '')) + '</small>' : '') +
+          btnsOf(r) + '</div>';
       });
       return g + '</div>';
     }
-    let h = '<table><thead><tr><th class="c"><input type="checkbox" id="gsAll" title="Select every item of this page"></th><th></th>' + th('name', 'Name') + th('type', 'Type') + th('lvl', 'Lvl') + th('rar', 'Quality') + (tab === 'take' ? '<th>Craft</th>' : '') + (showOwner ? th('owner', 'In') : '') + '<th></th></tr></thead><tbody>';
+    let h = '<table><thead><tr><th class="c"><input type="checkbox" id="gsAll" title="Select every item of this page"></th><th></th>' + th('name', 'Name') + th('type', 'Type') + th('lvl', 'Lvl') + (tab === 'take' ? th('cr', 'Craft') : '') + th('forge', 'Hell Forge') + '<th>Tagged</th>' + (showOwner ? th('owner', 'Location') : '') + '<th></th></tr></thead><tbody>';
     part.forEach((r) => {
       const cls = LIGHT[r.rar] || '#3b2a14';
       h += '<tr data-id="' + r.id + '"><td class="c">' + (canSel(r) ? '<input type="checkbox" class="gsPick" data-id="' + r.id + '"' + (sel.has(r.id) ? ' checked' : '') + '>' : '') + '</td>' +
         '<td class="i"><img class="tip-dynamic" data-tipped="' + esc(tipOf(r)) + '" src="' + esc(imgOf(r)) + '" alt="" loading="lazy"></td>' +
         '<td class="n"><a class="tip-dynamic" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' + (r.set ? '<small>' + esc(r.set) + '</small>' : r.extra && r.extra.name ? '<small>Composed' + (r.extra.duration ? ' &middot; ' + r.extra.duration + ' min' : '') + '</small>' : '') + '</td>' +
-        '<td>' + esc(TYPES[r.type] || '') + '</td><td class="num">' + (r.lvl == null ? '' : r.lvl) + '</td><td>' + esc((RARITIES[r.rar] || [''])[0]) + '</td>' +
-        (tab === 'take' ? '<td>' + esc(r.craft) + (r.forge ? ' <small>+' + r.forge + '</small>' : '') + '</td>' : '') +
-        (showOwner ? '<td>' + (r.owner === -1 ? 'Guild store' : esc(nameOfMember(r.owner)) + (r.worn ? ' (worn)' : '')) + '</td>' : '') +
-        '<td>' + (r.owner === -1 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '">Take</button>' : r.owner === -2 ? '<button type="button" class="gsBtn gsOne" data-id="' + r.id + '">Deposit</button>' : '') + '</td></tr>';
+        '<td>' + esc(TYPES[r.type] || '') + '</td><td class="num">' + (r.lvl == null ? '' : r.lvl) + '</td>' +
+        (tab === 'take' ? '<td class="gsCr"' + (r.craft ? ' title="' + esc(r.craft).replace(/"/g, '&quot;') + '"' : '') + '>' + (r.cr >= 0 ? '<b style="color:' + CRAFT_DARK[r.cr] + '">' + esc(CRAFT_NAMES[r.cr]) + '</b>' : esc(r.craft)) + '</td>' : '') +
+        '<td class="gsHfc">' + (r.forge ? '<span class="gsHf"><i></i><b>' + r.forge + '</b></span>' : '') + '</td>' +
+        '<td class="gsTg">' + (r.tagged ? LOCK : '') + '</td>' +
+        (showOwner ? '<td>' + (r.owner === -1 ? 'Guild store' : playerLink(r.owner) + (r.equipped ? EQ_BADGE : '')) + '</td>' : '') +
+        '<td class="gsAct">' + btnsOf(r) + '</td></tr>';
     });
     return h + '</tbody></table>';
   }
   function footHtml(list) {
     const pages = Math.max(1, Math.ceil(list.length / perPage()));
-    const n = list.filter((r) => r.owner < 0).length;
+    const n = list.length;
     const shown = rows.length === list.length ? list.length + ' items' : list.length + ' of ' + rows.length + ' items';
     return '<span>' + shown + ' &middot; <span id="gsSel">' + sel.size + '</span> selected ' +
       '<button type="button" class="gsBtn" id="gsSelAll"' + (n ? '' : ' disabled') + '>Select all ' + n + '</button> <button type="button" class="gsBtn" id="gsSelNone">None</button></span>' +
       '<span class="gsPager"><a data-p="-1">&lsaquo; Prev</a> ' + (page + 1) + ' / ' + pages + ' <a data-p="1">Next &rsaquo;</a></span>' +
-      '<button type="button" class="gsBtn go" id="gsGo"' + (sel.size ? '' : ' disabled') + '>' + (tab === 'take' ? 'Take' : 'Deposit') + ' selected (' + sel.size + ')</button>';
+      '<button type="button" class="gsBtn go" id="gsGo"' + (sel.size ? '' : ' disabled') + '>' + (tab === 'take' ? 'Take' : 'Deposit') + ' selected (' + sel.size + ')</button>' +
+      (tab === 'take' && withMembers ? '<button type="button" class="gsBtn" id="gsRecallSel" title="Send the selected items of other members to the guild store"' + (list.some((r) => sel.has(r.id) && r.owner >= 0) ? '' : ' disabled') + '>Recall selected to store</button>' : '');
   }
   function drawList() {
     if (!box) return;
@@ -352,6 +436,8 @@ export function initGuildStore() {
     const top = keep ? keep.scrollTop : 0;
     box.querySelector('.gsList').innerHTML = listHtml(list);
     box.querySelector('.gsFoot').innerHTML = footHtml(list);
+    const tb = box.querySelector('.gsTypes');
+    if (tb) tb.innerHTML = typesHtml();
     box.querySelector('.gsList').scrollTop = top;
     const all = box.querySelector('#gsAll');
     if (all) all.checked = !!box.querySelectorAll('.gsPick').length && Array.from(box.querySelectorAll('.gsPick')).every((c) => c.checked);
@@ -362,7 +448,13 @@ export function initGuildStore() {
     const keepQ = document.activeElement && document.activeElement.id === 'gsQ';
     body.innerHTML = (loading ? '<div class="gsEmpty">Loading...</div>' : barHtml() + '<div class="gsList"></div><div class="gsFoot"></div>') + '<div class="gsMsg"></div>';
     box.querySelectorAll('.gsTab').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
-    if (!loading) { const bs = box.querySelector('#gsBuff'); if (bs) searchSelect(bs, 'Search buff...', 'No buff matches', { resetOnEmpty: true }); drawList(); if (keepQ) box.querySelector('#gsQ').focus(); }
+    // each select in a span of its own: the search box removes the boxes of the selects next to it
+    if (!loading) box.querySelectorAll('.gsBar > select').forEach((el) => { const w = document.createElement('span'); w.className = 'gsSelW'; el.replaceWith(w); w.appendChild(el); });
+    if (!loading) { const bs = box.querySelector('#gsBuff'); if (bs) searchSelect(bs, 'Search buff...', 'No buff matches', { resetOnEmpty: true });
+      const ps = box.querySelector('#gsPlayer'); if (ps) searchSelect(ps, 'Search player...', 'No player matches', { resetOnEmpty: true });
+      // the dropdowns of the backpack's filters: orange paper, bold brown text, a colour mark in front of the crafts
+      const craftMark = (v) => (CRAFT_COLORS[parseInt(v, 10)] ? { color: CRAFT_COLORS[parseInt(v, 10)], shape: 'square' } : null);
+      [['#gsHf', (v) => (/^[1-5]$/.test(v) ? { html: '<span class="gsHfRow">' + '<i></i>'.repeat(+v) + '</span>', textless: true } : null)], ['#gsCraft', craftMark], ['#gsTagged', null], ['#gsSet', null], ['#gsEq', null], ['#gsEquipped', null], ['#gsDup', null]].forEach(([q, swatch]) => { const el = box.querySelector(q); if (el) searchSelect(el, 'Search...', 'No match', { matchWidth: true, look: true, swatch }); }); drawList(); if (keepQ) box.querySelector('#gsQ').focus(); }
   }
 
   // ---------- loading ----------
@@ -378,7 +470,7 @@ export function initGuildStore() {
       store = s; exp = e && e.items ? e : null;
       if (exp) { guildId = exp.guild_id; myId = exp.current_player_id; }
       if (withMembers && !exp) withMembers = false;
-      if (withMembers) await loadMembers(my);
+      await loadMembers(my); // always: the names, and the player filter
       if (my !== seq || !box) return;
       rows = storeRows();
     } else {
@@ -403,11 +495,29 @@ export function initGuildStore() {
     const list = await getJson({ cmd: 'export', subcmd: 'guild_members', guild_id: guildId });
     if (my !== seq) return;
     members = {};
-    (Array.isArray(list) ? list : []).forEach((p) => { members[p.id] = p.username; });
+    (Array.isArray(list) ? list : []).forEach((p) => { members[p.id] = { name: p.username, level: p.level, rank: p.rank_name, last: p.last_login }; });
   }
 
   // ---------- take / deposit ----------
+  // an item of another member: mode 0 takes it straight into your backpack, mode 1 recalls it into the guild store
+  function recallOne(id, playerId, mode) {
+    return new Promise((resolve) => {
+      $.ajax({
+        url: withFst('/app.php'), data: { browser: 1, v: 9, cmd: 'guild', subcmd: 'inventory', subcmd2: 'recall', id, player_id: playerId, mode }, dataType: 'text',
+        success: (t) => {
+          let j = null;
+          try { j = JSON.parse(t); } catch (e) { /* not json */ }
+          console.debug('[Guild Store] recall', mode, id, t && t.slice(0, 300));
+          // { s: true, r: [...] } when it worked (the item has a new id, so the list is loaded again afterwards); otherwise { e: { message } }
+          resolve(j && j.s ? '' : (j && j.e && j.e.message) || 'unexpected answer');
+        },
+        error: () => resolve('the request failed'),
+      });
+    });
+  }
   async function takeOne(id) {
+    const row = rows.find((x) => x.id === id);
+    if (row && row.owner >= 0) return recallOne(id, row.owner, 0);
     const r = await getJson({ cmd: 'guild', subcmd: 'inventory', subcmd2: 'takeitem', guildstore_id: id, ajax: 1 });
     if (!r) return 'the request failed';
     if (r.r == 1) return plain(r.m) || 'the game refused';
@@ -426,7 +536,8 @@ export function initGuildStore() {
       });
     });
   }
-  async function act(ids) {
+  async function act(ids, toStore) {
+    if (toStore) ids = ids.filter((id) => { const r = rows.find((x) => x.id === id); return r && r.owner >= 0; });
     if (busy || !ids.length) return;
     busy = true;
     box.querySelectorAll('.gsBtn').forEach((b) => { b.disabled = true; });
@@ -434,8 +545,9 @@ export function initGuildStore() {
     let done = 0, bad = '';
     for (const id of ids) {
       if (!box) break;
-      setMsg((take ? 'Taking ' : 'Depositing ') + (done + 1) + ' of ' + ids.length + '...');
-      const err = await (take ? takeOne(id) : depositOne(id));
+      setMsg((toStore ? 'Recalling ' : take ? 'Taking ' : 'Depositing ') + (done + 1) + ' of ' + ids.length + '...');
+      const row = rows.find((x) => x.id === id);
+      const err = await (toStore ? recallOne(id, row.owner, 1) : take ? takeOne(id) : depositOne(id));
       if (err) { bad = err; break; }
       done++;
       sel.delete(id);
@@ -445,11 +557,12 @@ export function initGuildStore() {
       await sleep(120 + Math.random() * 160);
     }
     busy = false;
-    adjustInventoryCount(take ? -done : done);
+    if (!toStore) adjustInventoryCount(take ? -done : done);
     exp = null; // the next load asks for the new state of the guild
     if (!box) return;
     drawList();
-    setMsg((done ? done + (take ? ' taken' : ' deposited') + '.' : '') + (bad ? (done ? ' ' : '') + 'Stopped: ' + bad : ''), bad ? 'bad' : 'ok');
+    if (toStore && done) { const m = done + ' recalled into the guild store.' + (bad ? ' Stopped: ' + bad : ''); await load(); setMsg(m, bad ? 'bad' : 'ok'); return; }
+    setMsg((done ? done + (toStore ? ' recalled' : take ? ' taken' : ' deposited') + '.' : '') + (bad ? (done ? ' ' : '') + 'Stopped: ' + bad : ''), bad ? 'bad' : 'ok');
   }
 
   // ---------- window ----------
@@ -461,6 +574,7 @@ export function initGuildStore() {
       '<div class="gsHead"><span>Guild Store</span><span class="gsLinks"><a href="' + esc(withFst(INV_URL)) + '" target="_blank" rel="noopener">Guild Inventory page</a> &middot; <a href="' + esc(withFst(DEPOSIT_URL)) + '" target="_blank" rel="noopener">Deposit page</a></span>' +
       '<button type="button" class="gsX" title="Close (Esc)" aria-label="Close">&times;</button></div>' +
       '<div class="gsTabs"><button type="button" class="gsTab" data-tab="take">Take</button><button type="button" class="gsTab" data-tab="put">Deposit</button></div><div class="gsBody"></div>';
+    lockPage();
     document.body.appendChild(box);
     if (startTab) tab = startTab;
     box.querySelector('.gsX').addEventListener('click', () => { if (!busy) close(); });
@@ -498,14 +612,16 @@ export function initGuildStore() {
     const t = e.target;
     if (t.closest('.gsTab')) { switchTab(t.closest('.gsTab').dataset.tab); return; }
     if (t.closest('#gsReload')) { if (!busy) { exp = null; store = null; members = null; load(); } return; }
-    if (t.closest('#gsClear')) { Object.assign(F, { q: '', type: '', rars: new Set(), min: '', max: '', set: false, eq: false, dup: false, hf: '', craft: '', buff: '' }); page = 0; drawBody(false); return; }
+    if (t.closest('#gsClear')) { Object.assign(F, { q: '', types: new Set(), rars: new Set(), min: '', max: '', set: '', eq: '', dup: '', equipped: '', tagged: '', hf: '', craft: '', buff: '', player: '' }); page = 0; drawBody(false); return; }
     const rb = t.closest('.gsRar');
     if (rb) { const i = Number(rb.dataset.r); if (F.rars.has(i)) F.rars.delete(i); else F.rars.add(i); page = 0; rb.classList.toggle('on'); drawList(); return; }
     const vw = t.closest('.gsView button');
     if (vw) { view = vw.dataset.view; remember('gsView', view); page = 0; drawBody(false); return; }
     if (t.closest('#gsDir')) { sort = { k: sort.k, d: -sort.d }; drawBody(false); return; }
+    const ty = t.closest('.gsTyp');
+    if (ty) { const v = ty.dataset.t; if (v === '') F.types.clear(); else { const n = +v; if (F.types.has(n)) F.types.delete(n); else F.types.add(n); } page = 0; drawList(); return; }
     const tileImg = t.closest('.gsTile .inventory-item-slot');
-    if (tileImg) { e.preventDefault(); const id = Number(tileImg.closest('.gsTile').dataset.id); if (sel.has(id)) sel.delete(id); else if (rows.some((r) => r.id === id && r.owner < 0)) sel.add(id); drawList(); return; }
+    if (tileImg) { e.preventDefault(); const id = Number(tileImg.closest('.gsTile').dataset.id); if (sel.has(id)) sel.delete(id); else if (rows.some((r) => r.id === id)) sel.add(id); drawList(); return; }
     const head = t.closest('th.s');
     if (head) { const k = head.dataset.k; sort = sort.k === k ? { k, d: -sort.d } : { k, d: 1 }; drawList(); return; }
     const pg = t.closest('.gsPager a');
@@ -513,7 +629,10 @@ export function initGuildStore() {
     const one = t.closest('.gsOne');
     if (one && !busy) { act([Number(one.dataset.id)]); return; }
     if (t.closest('#gsGo')) { act(Array.from(sel)); return; }
-    if (t.closest('#gsSelAll')) { visible().forEach((r) => { if (r.owner < 0) sel.add(r.id); }); drawList(); return; }
+    if (t.closest('#gsRecallSel')) { act(Array.from(sel), true); return; }
+    const rc = t.closest('.gsRecall');
+    if (rc && !busy) { act([Number(rc.dataset.id)], true); return; }
+    if (t.closest('#gsSelAll')) { visible().forEach((r) => sel.add(r.id)); drawList(); return; }
     if (t.closest('#gsSelNone')) { sel.clear(); drawList(); }
   }
   function onChange(e) {
@@ -522,15 +641,21 @@ export function initGuildStore() {
     if (t.id === 'gsAll') { box.querySelectorAll('.gsPick').forEach((c) => { const id = Number(c.dataset.id); if (t.checked) sel.add(id); else sel.delete(id); }); drawList(); return; }
     if (t.id === 'gsSize') { size = parseInt(t.value, 10); remember('gsSize', String(size)); drawList(); return; }
     if (t.id === 'gsSort') { sort = { k: t.value, d: 1 }; page = 0; drawBody(false); return; }
-    if (t.id === 'gsType') F.type = t.value;
+    if (t.id === 'gsPlayer') {
+      F.player = t.value;
+      if (F.player !== '' && !withMembers) { withMembers = true; remember('gsMembers', '1'); rows = storeRows(); sel.clear(); page = 0; drawBody(false); return; } // their items are only listed with "Members' items"
+    }
     else if (t.id === 'gsHf') F.hf = t.value;
     else if (t.id === 'gsCraft') F.craft = t.value;
     else if (t.id === 'gsBuff') { F.buff = t.value; if (F.buff !== '') readTips(); }
-    else if (t.id === 'gsSet') F.set = t.checked;
-    else if (t.id === 'gsEq') F.eq = t.checked;
-    else if (t.id === 'gsDup') F.dup = t.checked;
+    else if (t.id === 'gsSet') F.set = t.value;
+    else if (t.id === 'gsEq') F.eq = t.value;
+    else if (t.id === 'gsDup') F.dup = t.value;
+    else if (t.id === 'gsEquipped') F.equipped = t.value;
+    else if (t.id === 'gsTagged') F.tagged = t.value;
     else if (t.id === 'gsMem') {
       withMembers = t.checked; remember('gsMembers', withMembers ? '1' : '0');
+      if (!withMembers) { F.equipped = ''; F.player = ''; } // those filters are about the members' items
       if (withMembers && !members) { load(); return; }
       rows = storeRows(); sel.clear(); drawBody(false); return;
     } else return;
