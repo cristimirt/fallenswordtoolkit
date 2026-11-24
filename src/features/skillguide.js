@@ -109,6 +109,11 @@ export function initSkillGuide() {
   // ---------- state
   const st = { q: recall('sgQ') || '', type: recall('sgType') || '', learn: recall('sgLearn') || '', pot: recall('sgPot') || '', comp: recall('sgComp') || '', src: recall('sgSrc') || '', sort: recall('sgSort') || 'name', lvl: num(recall('sgLvl')), clvl: num(recall('sgCLvl')) };
   const open = new Set();
+  const simBy = new Map(); // skill id -> the level simulated for that skill alone (the Simulate button next to a potion)
+  const WIKI = 'https://wiki.fallensword.com/index.php/';
+  const wikiUrl = (name) => WIKI + encodeURIComponent(name.replace(/ /g, '_')).replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2C/g, ',').replace(/%27/g, "'");
+  const guideUrl = (id) => 'https://guide.fallensword.com/index.php?cmd=items&subcmd=view&item_id=' + id;
+  const lk = (href, label, title) => '<a class="sgLk" href="' + esc(href) + '" target="_blank" rel="noopener" title="' + esc(title) + '">' + label + '</a>';
   const sw = (id, on, label) => '<label class="sgSw"><span class="sgTg"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="trk"></span></span>' + label + '</label>';
   const opts = (list, cur) => list.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
 
@@ -125,7 +130,7 @@ export function initSkillGuide() {
       '#fsbSg .sgCount{margin-left:auto;color:#6b5230;}' +
       '#fsbSg .sgSw,#fsbSg .sgSw *{cursor:pointer !important;}#fsbSg .sgSw{display:inline-flex;align-items:center;gap:5px;}#fsbSg .sgTg{position:relative;display:inline-block;flex:none;}#fsbSg .sgTg input{position:absolute;opacity:0;width:100%;height:100%;margin:0;}' +
       '#fsbSg .trk{display:block;box-sizing:content-box;width:26px;height:13px;border:1px solid #20170396;border-radius:8px;background:#b79862;position:relative;transition:background .15s;}' +
-      '#fsbSg .trk::after{content:"";position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;background:#f6e8c4;border:1px solid #20170396;transition:left .15s;}' +
+      '#fsbSg .trk::after{content:"";position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;box-sizing:border-box;background:#f6e8c4;border:1px solid #20170396;transition:left .15s;}' +
       '#fsbSg input:checked+.trk{background:#5f8f2a;}#fsbSg input:checked+.trk::after{left:15px;}' +
       '#fsbSg .sgRow{display:flex;gap:10px;padding:8px 6px;border-top:1px solid #20170340;}#fsbSg .sgRow:first-child{border-top:0;}' +
       '#fsbSg .sgIco{flex:none;width:40px;height:40px;border:1px solid #20170396;border-radius:3px;background:#2e261c;}' +
@@ -133,6 +138,8 @@ export function initSkillGuide() {
       '#fsbSg .sgDesc{margin:2px 0 4px;color:#3b2a14;}' +
       '#fsbSg .sgFacts{display:flex;flex-wrap:wrap;gap:3px 14px;color:#6b5230;}#fsbSg .sgFacts b{font-weight:600;color:#3b2a14;}#fsbSg .sgYes{color:#2f6a12 !important;}#fsbSg .sgNo{color:#8a6a38 !important;}' +
       '#fsbSg .sgLine{margin-top:3px;}#fsbSg .sgLine b{color:#201703;}#fsbSg .sgSimv{color:#2f6a12;font-weight:600;}' +
+      '#fsbSg a.sgLk,#fsbSg button.sgLk{display:inline-block;margin-left:6px;padding:0 6px;font:bold 10px/16px Arial,sans-serif;color:#3b2a14;background:#e9d3a0;border:1px solid #20170396;border-radius:3px;text-decoration:none;cursor:pointer;vertical-align:middle;}' +
+      '#fsbSg a.sgLk:hover,#fsbSg button.sgLk:hover{background:#f3e2b8;}#fsbSg button.sgLk.on{background:#c9dc9a;border-color:#4f6f12;}' +
       '#fsbSg .sgToggle{margin-top:4px;background:none;border:0;padding:0;font:inherit;color:#0b5394;cursor:pointer;text-decoration:underline;}' +
       '#fsbSg .sgPots{margin-top:4px;border:1px solid #20170340;border-radius:3px;background:#f6e8c4;max-height:320px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#8a6a38 #d9b774;}' +
       '#fsbSg .sgPots::-webkit-scrollbar{width:9px;height:9px;}#fsbSg .sgPots::-webkit-scrollbar-track{background:#d9b774;border-radius:4px;box-shadow:inset 0 0 2px #20170399;}#fsbSg .sgPots::-webkit-scrollbar-thumb{background:#8a6a38;border:1px solid #20170396;border-radius:4px;}#fsbSg .sgPots::-webkit-scrollbar-thumb:hover{background:#6b5230;}' +
@@ -187,8 +194,8 @@ export function initSkillGuide() {
     const srcs = joinYears(ss.filter((x) => x[0] === 'chest').map(sourceText)).concat(ss.filter((x) => x[0] !== 'chest').map(sourceText));
     const b = s.pp ? bonus(s.pp, p.lvl) : '';
     return '<div class="sgPot">' + (p.id ? '<img' + tip + ' src="' + CDN + 'items/' + p.id + '.gif" alt="" loading="lazy">' : '<span class="sgNoIc"></span>') +
-      '<div class="sgPotT"><a' + tip + ' style="color:' + (LIGHT[p.rar] || '#3b2a14') + '">' + esc(p.name) + '</a><small>' + (srcs.length ? esc(srcs.join(' · ')) : 'Source not known') + '</small></div>' +
-      '<div class="sgPotL"><b>Level ' + p.lvl + '</b>' + (b ? ' <span class="sgSimv">' + esc(b) + '</span>' : '') + '<small>' + p.min + ' min</small></div></div>';
+      '<div class="sgPotT"><a' + tip + ' style="color:' + (LIGHT[p.rar] || '#3b2a14') + '">' + esc(p.name) + '</a>' + lk(wikiUrl(p.name), 'Wiki', 'Wiki page of ' + p.name) + (p.id ? lk(guideUrl(p.id), 'Guide', 'Guide page of ' + p.name) : '') + '<small>' + (srcs.length ? esc(srcs.join(' · ')) : 'Source not known') + '</small></div>' +
+      '<div class="sgPotL"><b>Level ' + p.lvl + '</b> <button type="button" class="sgLk sgSim' + (simBy.get(s.id) === p.lvl ? ' on' : '') + '" data-id="' + s.id + '" data-lvl="' + p.lvl + '" title="Simulate this skill at level ' + p.lvl + '">Simulate</button>' + (b ? ' <span class="sgSimv">' + esc(b) + '</span>' : '') + '<small>' + p.min + ' min</small></div></div>';
   }).join('');
   // what the skill tree of the game shows for a skill that can be learned
   const learnFacts = (s) => {
@@ -201,7 +208,8 @@ export function initSkillGuide() {
     const showPots = open.has(s.id) || $('#sgAll').prop('checked');
     const c = s.comp;
     let sim = '';
-    if (st.lvl != null) sim += s.pp ? '<div class="sgLine">At skill level <b>' + st.lvl + '</b>: <span class="sgSimv">' + esc(bonus(s.pp, st.lvl)) + '</span></div>' : '<div class="sgLine">At skill level <b>' + st.lvl + '</b>: this skill has no simple bonus per point.</div>';
+    const lv = simBy.has(s.id) ? simBy.get(s.id) : st.lvl; // the level of the Simulate button next to a potion, else the one of the box on top
+    if (lv != null) sim += s.pp ? '<div class="sgLine">At skill level <b>' + lv + '</b>: <span class="sgSimv">' + esc(bonus(s.pp, lv)) + '</span></div>' : '<div class="sgLine">At skill level <b>' + lv + '</b>: this skill has no simple bonus per point.</div>';
     let comp = '';
     if (c) {
       comp = '<div class="sgLine">Composed potions: from composing level <b>' + c[0] + '</b>, up to skill level <b>' + c[3] + '</b>' + (c[2] > c[0] ? ' (the maximum is reached at composing level ' + c[2] + ')' : '') + '.';
@@ -212,7 +220,7 @@ export function initSkillGuide() {
       comp += '</div>';
     }
     return '<div class="sgRow" data-id="' + s.id + '"><img class="sgIco" src="' + CDN + 'skills/' + s.id + '.png" alt="" width="40" height="40">' +
-      '<div class="sgMain"><div class="sgName">' + esc(s.name) + '</div><div class="sgDesc">' + s.desc + '</div>' +
+      '<div class="sgMain"><div class="sgName">' + esc(s.name) + lk(wikiUrl(s.name), 'Wiki', 'Wiki page of ' + s.name) + '</div><div class="sgDesc">' + s.desc + '</div>' +
       '<div class="sgFacts">' + fact('Type', s.type >= 0, s.type >= 0 ? TYPE_NAMES[s.type] : 'not in a skill tree') + fact('Learned by players', s.learn, s.learn ? 'Yes' : 'No, potions only') + learnFacts(s) +
       fact('In potions', s.potions.length > 0, s.potions.length ? 'Yes (' + s.potions.length + ')' : 'No') + fact('In composed potions', !!c, c ? 'Yes' : 'No') + '</div>' +
       sim + comp +
@@ -230,15 +238,18 @@ export function initSkillGuide() {
 
   // ---------- events
   const keep = { sgQ: ['q', 'sgQ'], sgType: ['type', 'sgType'], sgLearn: ['learn', 'sgLearn'], sgPot: ['pot', 'sgPot'], sgComp: ['comp', 'sgComp'], sgSrc: ['src', 'sgSrc'], sgSort: ['sort', 'sgSort'] };
-  $root.on('input change', '#sgQ,#sgType,#sgLearn,#sgPot,#sgComp,#sgSrc,#sgSort', function () { const k = keep[this.id]; st[k[0]] = this.value; remember(k[1], this.value); draw(); });
+  $root.on('input change', '#sgQ,#sgType,#sgLearn,#sgPot,#sgComp,#sgSrc,#sgSort', function () { const k = keep[this.id]; if (st[k[0]] === this.value) return; st[k[0]] = this.value; remember(k[1], this.value); draw(); }); // a change that follows the typing (when the box loses focus) draws nothing: the list under the click would be replaced and the click lost
   $root.on('input change', '#sgLvl,#sgCLvl', function () {
     const v = num(this.value);
+    if (v === (this.id === 'sgLvl' ? st.lvl : st.clvl)) return;
     if (this.id === 'sgLvl') { st.lvl = v; remember('sgLvl', v == null ? '' : v); } else { st.clvl = v; remember('sgCLvl', v == null ? '' : v); }
     draw();
   });
   $root.on('change', '#sgAll', draw);
+  $root.on('click', '.sgSim', function () { const id = +this.getAttribute('data-id'), l = +this.getAttribute('data-lvl'); if (simBy.get(id) === l) simBy.delete(id); else simBy.set(id, l); draw(); });
   $root.on('click', '.sgToggle', function () { const id = +this.getAttribute('data-id'); if (open.has(id)) open.delete(id); else open.add(id); draw(); });
   $root.on('click', '#sgReset', () => {
+    simBy.clear();
     Object.assign(st, { q: '', type: '', learn: '', pot: '', comp: '', src: '', sort: 'name', lvl: null, clvl: null });
     ['sgQ', 'sgType', 'sgLearn', 'sgPot', 'sgComp', 'sgSrc', 'sgSort', 'sgLvl', 'sgCLvl'].forEach((k) => remember(k, ''));
     $('#sgQ,#sgLvl,#sgCLvl').val('');
