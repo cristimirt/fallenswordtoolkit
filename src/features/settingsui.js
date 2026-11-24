@@ -233,12 +233,37 @@ export function openBackpackSettings(applied) {
 // ---------------------------------------------------------------- the FST tab of the preferences page
 // Every setting of the script, in categories. Each change is saved at once (like the tabs of the other scripts), except that
 // turning on the automatic break down first shows how many items would go. Needs the tabs of the game's own preferences page.
+// The Fallen Sword Helper adds its FSH tab after the page loaded, maybe after ours: keep our tab behind it (moved when it shows up).
+function keepAfterFsh(tabs, id) {
+  const nav = $(tabs).find('.ui-tabs-nav')[0];
+  if (!nav) return;
+  const fix = () => {
+    const fsh = nav.querySelector('a[href="#fshSettings"]'), me = nav.querySelector('a[href="#' + id + '"]');
+    if (!fsh || !me) return;
+    const fli = fsh.closest('li'), mli = me.closest('li');
+    if (fli.compareDocumentPosition(mli) & window.Node.DOCUMENT_POSITION_FOLLOWING) return;
+    const act = Array.from(nav.children)[$(tabs).tabs('option', 'active')];
+    fli.after(mli);
+    $(tabs).tabs('refresh');
+    if (act) $(tabs).tabs('option', 'active', Array.from(nav.children).indexOf(act));
+  };
+  fix();
+  const mo = new MutationObserver(fix);
+  mo.observe(nav, { childList: true });
+  setTimeout(() => mo.disconnect(), 30000);
+}
+
 export function initFstTab() {
   if (!/[?&]cmd=settings(&|$)/.test(location.search)) return;
   const CATS = [['general', 'General'], ['backpack', 'Backpack'], ['break', 'Break down'], ['map', 'Map'], ['pf', 'Path Finder'], ['guild', 'Guild']];
   const panel = (c, v) => ({
     general: part.quickBuff(v) + part.look(v) +
-      '<div class="bpSetH">All settings</div><div class="bpSwRow"><a href="#" id="fstReset">Restore the default settings</a> ' + tip('Puts every setting of the Fallen Sword Toolkit back to how it was when you installed it. Item locks and the log are kept.') + '</div>',
+      '<div class="bpSetH">All settings</div><div class="bpSwRow"><a href="#" id="fstReset">Restore the default settings</a> ' + tip('Puts every setting of the Fallen Sword Toolkit back to how it was when you installed it. Item locks and the log are kept.') + '</div>' +
+      '<div class="bpSwRow"><a href="#" id="fstClearLog">Clear logs</a> ' + tip('Deletes the list of items that the automatic break down has broken down.') + '</div>' +
+      '<div class="bpSwRow"><a href="#" id="fstIo">Export/Import settings</a> ' + tip('Shows your settings as text that you can copy, download, or replace with settings from a file, for example to use on another browser.') + '</div>' +
+      '<div id="fstIoBox" style="display:none"><textarea id="fstIoText" spellcheck="false" aria-label="Settings as JSON"></textarea>' +
+      '<div class="fstIoBtns"><button type="button" class="fstBtn go" id="fstIoApply">Apply settings</button><button type="button" class="fstBtn" id="fstIoDown">Download JSON</button><button type="button" class="fstBtn" id="fstIoUp">Upload JSON</button>' +
+      '<input type="file" id="fstIoFile" accept=".json,application/json" style="display:none"></div><div id="fstIoMsg"></div></div>',
     backpack: part.type(v) + part.filters() + part.display(v) + part.locks(v),
     break: part.autoBreak(v),
     map: part.map(v),
@@ -282,6 +307,7 @@ export function initFstTab() {
   function build(tabs) {
     ensureSetCss();
     $('head').append('<style id="fstStyle">' +
+      '#settingsTabs.ui-tabs .ui-tabs-nav .ui-tabs-anchor{padding:.5em .7em;}' + // the tabs of the preferences page fit next to each other
       '#fstSettings{padding:10px 14px;color:#3b2a14;text-align:left}' +
       '#fstSettings .fstTitle{font-size:16px;font-weight:bold;margin:0 0 8px}#fstSettings .fstTitle small{font-size:11px;font-weight:normal;opacity:.7}' +
       '#fstSettings .fstNav{margin:0 0 6px}' +
@@ -291,11 +317,18 @@ export function initFstTab() {
       '#fstSettings .fstPanel{max-width:520px;padding-bottom:6px}' +
       '#fstSettings .fstMsg{min-height:18px;margin:8px 0 0;font-weight:bold;color:#2c6a12}' +
       '#fstSettings a{color:#5a3a10}' +
+      '#fstSettings #fstIoText{display:block;box-sizing:border-box;width:100%;height:200px;margin:4px 0 6px;padding:6px;resize:vertical;font:11px/1.35 Consolas,monospace;color:#3b2a14;background:#f6e8c4;border:1px solid #20170396;border-radius:3px;scrollbar-width:thin;scrollbar-color:#8a6a38 #d9b774;}' +
+      '#fstSettings #fstIoText::-webkit-scrollbar{width:9px;height:9px;}#fstSettings #fstIoText::-webkit-scrollbar-track{background:#d9b774;border-radius:4px;box-shadow:inset 0 0 2px #20170399;}' +
+      '#fstSettings #fstIoText::-webkit-scrollbar-thumb{background:#8a6a38;border:1px solid #20170396;border-radius:4px;}#fstSettings #fstIoText::-webkit-scrollbar-thumb:hover{background:#6b5230;}' +
+      '#fstSettings .fstIoBtns{display:flex;flex-wrap:wrap;gap:6px;}#fstSettings #fstIoMsg{min-height:18px;margin-top:6px;font-weight:bold;}' +
+      '#fstSettings .fstBtn{cursor:pointer;background:#e9d3a0;color:#3b2a14;border:1px solid #20170396;border-radius:3px;padding:3px 12px;font:bold 12px Arial,sans-serif;box-shadow:0 0 2px #00000066;}' +
+      '#fstSettings .fstBtn:hover{background:#f3e2b8;}#fstSettings .fstBtn.go{background:#c9dc9a;}#fstSettings .fstBtn.go:hover{background:#d6e8a8;}' +
       '</style>');
     $(tabs).find('.ui-tabs-nav').append('<li><a href="#fstSettings">FST</a></li>');
     $(tabs).append('<div id="fstSettings"><div class="fstTitle">Fallen Sword Toolkit <small>version ' + esc(info.version) + ', build ' + esc(info.build) + '</small></div><div id="fstBody"></div><div class="fstMsg" id="fstMsg"></div></div>');
     render();
     $(tabs).tabs('refresh');
+    keepAfterFsh(tabs, 'fstSettings');
     // the link "More settings" of the backpack lands here
     if (location.hash === '#fstSettings') $(tabs).tabs('option', 'active', $(tabs).find('.ui-tabs-nav li').index($(tabs).find('a[href="#fstSettings"]').parent()));
   }
@@ -313,6 +346,12 @@ export function initFstTab() {
     $(this).addClass('bp-on');
     $('#fstSettings .fstPanel').hide().filter('[data-c="' + cat + '"]').show();
   });
+  $(document).on('click', '#fstClearLog', (e) => {
+    e.preventDefault();
+    if (!window.confirm('Delete the break down log?')) return;
+    remember('abLog', '[]');
+    msg('Logs cleared.');
+  });
   $(document).on('click', '#fstReset', (e) => {
     e.preventDefault();
     if (!window.confirm('Put all the Fallen Sword Toolkit settings back to their defaults?')) return;
@@ -322,6 +361,68 @@ export function initFstTab() {
     remember('pathfinderPortals', '1');
     render();
     msg('Defaults restored.');
+  });
+
+  // export / import: the settings, the item locks and the choices made in the windows (not the log, caches or window positions)
+  const KEEP = ['sidebar', 'pathfinderWaysOnly', 'pathfinderPortals', 'gsMembers', 'gsView', 'gsSize', 'matchAny', 'advOpen', 'sortKey', 'sortDesc', 'sortOrder', 'footprintsOn', 'qbSort'];
+  const exportFile = () => {
+    const data = {};
+    KEEP.forEach((k) => { const x = recall(k); if (x !== null) data[k] = x; });
+    return { app: 'fallen-sword-toolkit', version: info.version, exported: new Date().toISOString(), settings: loadSettings(), locked: Array.from(abLocks()), data };
+  };
+  const ioMsg = (t, bad) => { $('#fstIoMsg').text(t).css('color', bad ? '#a00000' : '#2c6a12'); };
+  // the text must be JSON of this script: returns the object, or '' with the reason shown
+  function readFile(text) {
+    let o = null;
+    try { o = JSON.parse(String(text)); } catch (err) { ioMsg('That is not valid JSON: ' + err.message, true); return null; }
+    if (!o || typeof o !== 'object' || o.app !== 'fallen-sword-toolkit') { ioMsg('This JSON is not from the Fallen Sword Toolkit.', true); return null; }
+    if (!o.settings || typeof o.settings !== 'object' || Array.isArray(o.settings)) { ioMsg('This Fallen Sword Toolkit file has no settings in it.', true); return null; }
+    return o;
+  }
+  $(document).on('click', '#fstIo', (e) => {
+    e.preventDefault();
+    const $b = $('#fstIoBox');
+    if ($b.is(':visible')) { $b.hide(); return; }
+    $('#fstIoText').val(JSON.stringify(exportFile(), null, 2));
+    ioMsg('');
+    $b.show();
+  });
+  $(document).on('click', '#fstIoDown', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(exportFile(), null, 2)], { type: 'application/json' }));
+    a.download = 'fallen-sword-toolkit-settings.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    ioMsg('Settings downloaded.');
+  });
+  $(document).on('click', '#fstIoUp', () => { $('#fstIoFile').val('').trigger('click'); });
+  $(document).on('change', '#fstIoFile', function () {
+    const f = this.files && this.files[0];
+    if (!f) return;
+    if (f.size > 2e6) { ioMsg('That file is too big to be a settings file.', true); return; }
+    const r = new FileReader();
+    r.onload = () => {
+      const o = readFile(r.result);
+      if (!o) return;
+      $('#fstIoText').val(JSON.stringify(o, null, 2));
+      ioMsg('The file was loaded into the box. Click "Apply settings" to use it.');
+    };
+    r.onerror = () => ioMsg('The file could not be read.', true);
+    r.readAsText(f);
+  });
+  $(document).on('click', '#fstIoApply', () => {
+    const o = readFile($('#fstIoText').val());
+    if (!o) return;
+    saveSettings(Object.assign({}, DEFAULT_SETTINGS, o.settings));
+    reloadSettings();
+    KEEP.forEach((k) => { if (o.data && typeof o.data[k] === 'string') remember(k, o.data[k]); });
+    if (Array.isArray(o.locked)) { const all = abLocks(); o.locked.forEach((id) => all.add(String(id))); remember('locked', JSON.stringify(Array.from(all))); }
+    render();
+    $('#fstIoBox').show();
+    $('#fstIoText').val(JSON.stringify(exportFile(), null, 2));
+    ioMsg('Settings applied. Reload the page to see all of it.');
   });
 
   // the game builds its tabs after the page is loaded (and other scripts add their own): wait for them
