@@ -88,13 +88,18 @@ export function searchSelect(select, placeholder, noMatch, opts) {
   let shown = [];
   let active = 0;
   let open = false;
-  const curText = () => (select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : '');
-  const swHtml = (sw, extra) => (sw
+  // a swatch can be { color, shape } or { html, textless }: markup of its own, and with textless it stands in for the text of the option
+  const curOpt = () => select.options[select.selectedIndex];
+  const curText = () => { const o = curOpt(); if (!o) return ''; const sw = opts.swatch ? opts.swatch(o.value, o.text) : null; return sw && sw.textless ? '' : o.text; };
+  const swHtml = (sw, extra) => (sw && sw.html
+    ? '<span class="bpAhHtml' + (extra ? ' ' + extra : '') + '">' + sw.html + '</span>'
+    : sw
     ? '<i class="' + (sw.shape === 'diamond' ? 'bpAhDia' : 'bpAhSw') + (extra ? ' ' + extra : '') + '" style="background:' + sw.color + '"></i>'
     : '<i class="bpAhSw bpAhNone"></i>'); // no mark: the same room, so that the names line up
   const paintBox = () => { // the box shows the mark of the chosen option
     if (!opts.swatch) return;
-    const sw = opts.swatch(select.value, curText());
+    const sw = opts.swatch(select.value, curOpt() ? curOpt().text : '');
+    $in.attr('placeholder', sw && sw.textless ? '' : placeholder);
     $box.children('.bpBoxSw').remove();
     $box.toggleClass('bpHasSw', !!sw);
     if (sw) $box.prepend(swHtml(sw, 'bpBoxSw'));
@@ -104,7 +109,7 @@ export function searchSelect(select, placeholder, noMatch, opts) {
     $list.html(
       shown.length
         ? shown.map((o, i) =>
-            '<li data-i="' + i + '" class="' + (i === active ? 'bpBuffActive ' : '') + (o.value === select.value ? 'bpBuffCur' : '') + '"' + '>' + (opts.swatch ? swHtml(o.sw) : '') + esc(o.text) + '</li>'
+            '<li data-i="' + i + '" class="' + (i === active ? 'bpBuffActive ' : '') + (o.value === select.value ? 'bpBuffCur' : '') + '"' + '>' + (opts.swatch ? swHtml(o.sw) : '') + esc(o.sw && o.sw.textless ? '' : o.text) + '</li>'
           ).join('')
         : '<li class="bpBuffNone">' + esc(noMatch) + '</li>'
     );
