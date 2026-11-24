@@ -259,7 +259,7 @@ export function initGuildStore() {
   };
   const sw = (id, on, label, tip) =>
     '<label><span class="gsSw"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="trk"></span></span>' + label +
-    (tip ? ' <span class="gsHelp tip-static" data-tipped="' + esc('<div style="max-width:240px;white-space:normal">' + tip + '</div>') + '">[?]</span>' : '') + '</label>';
+    (tip ? ' <span class="gsHelp tip-static" data-tipped="' + esc('<div style="max-width:240px;white-space:normal">' + tip + '</div>').replace(/"/g, '&quot;') + '">[?]</span>' : '') + '</label>';
   const HF_OPT = [['', 'Hellforge: any'], ['none', 'Not hellforged'], ['1', 'Hellforge 1'], ['2', 'Hellforge 2'], ['3', 'Hellforge 3'], ['4', 'Hellforge 4'], ['5', 'Hellforge 5']];
   const CRAFT_OPT = [['', 'Craft: any'], ['none', 'Not crafted']].concat(CRAFT_NAMES.map((n, i) => [String(i), n]));
   const opts = (list, cur) => list.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');

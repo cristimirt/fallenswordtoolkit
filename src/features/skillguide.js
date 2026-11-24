@@ -55,14 +55,14 @@ const num = (v) => (v === '' || v == null ? null : Math.max(0, parseFloat(v)) ||
 const fmt = (n) => String(Math.round(n * 1000) / 1000);
 
 // "+0.1% chance per point to ..." -> { v: 0.1, unit: '%' }; null when the skill has no plain per point value
-function perPoint(descHtml) {
+export function perPoint(descHtml) {
   const t = descHtml.replace(/<[^>]+>/g, '');
   if (/\bevery\b|\bper \d+ points|\bper 50\b/i.test(t)) return null;
   let m = t.match(/([+-]?\d+(?:\.\d+)?)(%| ?seconds?|s)?\s*(?:[a-z' ]{0,30}?)[, ]*per point/i);
   if (!m) m = t.match(/^([+-]?\d+(?:\.\d+)?)(%)/);
   return m ? { v: parseFloat(m[1]), unit: (m[2] || '').trim() === 's' ? ' s' : (m[2] || '').replace(/^ ?seconds?$/i, ' s') } : null;
 }
-const bonus = (pp, level) => (pp ? (pp.v * level >= 0 && pp.v > 0 ? '+' : '') + fmt(pp.v * level) + pp.unit : '');
+export const bonus = (pp, level) => (pp ? (pp.v * level >= 0 && pp.v > 0 ? '+' : '') + fmt(pp.v * level) + pp.unit : '');
 
 // the highest level of a skill in a composed potion at a composing level; null = not yet possible
 function composeMax(c, lvl) {

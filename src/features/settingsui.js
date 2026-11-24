@@ -116,7 +116,8 @@ export const part = {
     '<div class="bpSetH">Looks</div>' +
     sw('fstNotifStyle', v.notifStyle, 'Restyled notifications', 'The &quot;new logs&quot; and &quot;new Guild Chat messages&quot; notices in the menu get a softer look that matches the rest of the page, instead of the game&#39;s black box with a light border. Applied from the next page load.') +
     sw('fstTipCache', v.tipCache, 'Remember item tooltips for 10 seconds', 'Hovering an item again within 10 seconds shows the tooltip it had a moment ago, without asking the game again. A craft or upgrade shows up after those 10 seconds. Applied from the next page load.') +
-    sw('fstSkillGuide', v.skillGuide, 'Improved Skills Guide', 'The Skill Guide page (Character > Skills > View Skill Guide) lists every skill with its type, whether it can be learned, the potions that have it (with level, duration and where they come from), whether it can be in a composed potion and from which composing level, with filters and a box to simulate the bonus at a skill level. The potion data comes from the wiki and was collected on 2026-11-20. Applied from the next page load.'),
+    sw('fstSkillGuide', v.skillGuide, 'Improved Skills Guide', 'The Skill Guide page (Character > Skills > View Skill Guide) lists every skill with its type, whether it can be learned, the potions that have it (with level, duration and where they come from), whether it can be in a composed potion and from which composing level, with filters and a box to simulate the bonus at a skill level. The potion data comes from the wiki and was collected on 2026-11-20. Applied from the next page load.') +
+    sw('fstLoyalty', v.loyaltyInfo, 'Item information on the Loyalty page', 'The Loyalty page shows, next to every item you can buy, its name, type and quality and, for potions, the buffs with their level and duration, so you do not have to hover each item. What it reads is kept for 30 days. Applied from the next page load.'),
   guild: (v) =>
     '<div class="bpSetH">Guild Store</div>' +
     sw('fstGuildStore', v.guildStore, 'Improved Guild Store window', 'The Store link of the Guild menu opens a window that lists the items of the guild store with their name, type, level and quality, has search and filters, can list the guild tagged items in the backpacks of the other members, and can deposit items from your backpack. Off: the game&#39;s own window. Takes effect on the next page load.'),
@@ -160,6 +161,7 @@ const readOthers = (was) => ({
   footprints: chk('fstFootprints', was.footprints),
   notifStyle: chk('fstNotifStyle', was.notifStyle),
   guildStore: chk('fstGuildStore', was.guildStore),
+  loyaltyInfo: chk('fstLoyalty', was.loyaltyInfo),
   tipCache: chk('fstTipCache', was.tipCache),
   skillGuide: chk('fstSkillGuide', was.skillGuide),
 });
