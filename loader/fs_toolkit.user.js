@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fallen Sword Toolkit
 // @namespace    https://cristimirt.github.io/fallenswordtoolkit/
-// @description  A better backpack and small tools for Fallen Sword: filters and item locks, automatic break down, a Quick Buff pop-up, searchable markets, a wiki button and a Path Finder.
+// @description  A better backpack, Guild Store, Loyalty page and Skills Guide for Fallen Sword, plus break down, Quick Buff, searchable markets and a Path Finder.
 // @author       Aurik16
 // @version      1.0.0
 // @include      https://www.fallensword.com/*

@@ -4,49 +4,34 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // what the toolkit does, for the page people read before installing
 const SECTIONS = [
   ['Backpack', [
-    'Search by name as you type: every word has to appear, in any order.',
-    'Live level range and set filters, plus filters for rarity, equippable, usable, container, guild tagged, bound, duplicates, hellforge level and craft quality.',
-    'Item counts on the type icons, with the types you have none of dimmed; a durability sort; choose how many items are shown per page and the size of the icons.',
-    'Lock items: a locked item cannot be destroyed or broken down (and optionally not used or extracted). A small padlock marks it.',
-    'A backpack pop-up from the icon in the top bar, so you do not have to leave the page you are on.',
+    'Search as you type, and filters for level, set, rarity, craft, hell forge, guild tagged and more.',
+    'Item counts on the type icons, locked items, and a backpack pop-up from the top bar.',
   ]],
   ['Break down', [
-    'A break down button next to the loot you get from creatures in the world action list.',
-    'Automatic break down (off by default): every few seconds, on any page, equipment of the rarities and levels you choose is broken down. It never touches locked, bound or guild tagged items or containers. A dry run mode only lists what it would break down in the browser console. Every item broken down is logged, with the fragments you got.',
-  ]],
-  ['Markets', [
-    'Buff Market: a searchable buff list instead of the 140-option drop-down.',
-    'Auction House: search boxes on every filter, with the colour diamonds of the backpack for rarity and colour squares for craft quality.',
-  ]],
-  ['World map', [
-    'A wiki button that opens the page of the area you are in.',
-    "The game's Footprints button stays on when you reload the page, with the tiles it marked.",
-    'Path Finder: type where you want to go and see the way from where you stand, step by step, following you as you move.',
+    'A break down button next to world loot, and an optional automatic break down with a log.',
   ]],
   ['Guild Store', [
-    'The Store link of the Guild menu opens a window with a list of the items: name, type, level, quality and craft, with the game\'s item tooltips, instead of a grid of big icons.',
-    'Search by name, filters for type, quality, level range, set, equippable and guild tagged, and sorting by any column.',
-    'A switch that also lists the guild tagged items in the backpacks of the other members (the data of the Guild Inventory page), with who has them.',
-    'Take several items at once, and a Deposit tab to put items from your backpack into the store, which was only possible on a separate page. Links to the Guild Inventory page and the deposit page.',
+    'A list or tile window with search, filters and sorting.',
+    'Take or deposit several items at once, and take or recall items from other members.',
+  ]],
+  ['Loyalty page', [
+    'The name, type, quality and buffs of every item shown next to it.',
   ]],
   ['Skills Guide', [
-    'The Skill Guide page lists every skill with its type, whether players can learn it or it only comes from potions, and how many potions have it.',
-    'Every skill shows the potions that have it with level, duration and where they come from, with the item tooltip on hover.',
-    'Shows if a skill can be in a composed potion, from which composing level, and the highest level it can have there.',
-    'Filters for type, learnable, potions, composed potions and potion source, and boxes that work out the bonus at a skill level and what a composing level allows.',
+    'Every skill with its type, who can learn it, the potions that give it and a bonus calculator.',
+  ]],
+  ['Markets', [
+    'A searchable Buff Market, and search boxes and colour filters in the Auction House.',
+  ]],
+  ['World map', [
+    'A wiki button, Footprints kept after a reload, and a Path Finder with a switch for portals.',
   ]],
   ['Quick Buff', [
-    'Quick Buff opens in a window on the page that you can drag, not a separate browser window.',
-    'Shows the same information as the Fallen Sword Helper (buffs a target already has, your buff enhancements, last activity and stamina), an Activate link for your own buffs, the stamina cost of each buff, low level buffs dimmed, and an option to sort the buffs alphabetically.',
+    'A draggable window with the buffs a target already has.',
   ]],
-  ['Everything else', [
-    'Draggable widgets in the sidebars: move them between the two sides.',
-    'Our own pop-ups use the game\'s own tooltips and scrollbars style.',
-    'Works next to the Fallen Sword Helper; the www.fallensword.com address is sent to fallensword.com so that your settings are kept in one place.',
-  ]],
-  ['Settings', [
-    'All settings are in the FST tab of the game\'s Preferences page, in categories: General, Backpack, Break down, Map, Path Finder and Guild. Every setting has a [?] with a description, and changes are saved at once. The automatic break down is off until you turn it on, and asks for a confirmation with the number of items that match before it starts.',
-    'The gear button on the backpack page opens the quick settings of the backpack only (filters, display, locked items), with a link to the rest.',
+  ['Also', [
+    'Draggable sidebar widgets, and it works next to the Fallen Sword Helper.',
+    "All settings are in the FST tab of the game's Preferences page.",
   ]],
 ];
 
