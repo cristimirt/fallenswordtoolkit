@@ -11,6 +11,8 @@ import { initFootprints } from './features/footprints.js';
 import { initTipCache } from './core/tipcache.js';
 import { initNotifications } from './features/notifications.js';
 import { initGuildStore } from './features/guildstore.js';
+import { initBazaar } from './features/bazaar.js';
+import { initArenaShop } from './features/arenashop.js';
 import { initLoyalty } from './features/loyalty.js';
 import { initSkillGuide } from './features/skillguide.js';
 import { initAuctionHouse, initBuffMarket } from './features/markets.js';
@@ -37,6 +39,8 @@ export default function start(ctx) {
   initNotifications();
   initGuildStore();
   initLoyalty();
+  initArenaShop();
+  initBazaar();
   initSkillGuide();
   initPathfinder();
   initQuickBuffPopup();

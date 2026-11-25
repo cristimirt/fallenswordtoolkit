@@ -18,8 +18,14 @@ const SECTIONS = [
     'A list or tile window with search, filters and sorting.',
     'Take or deposit several items at once, and take or recall items from other members.',
   ]],
-  ['Loyalty page', [
-    'The name, type, quality and buffs of every item shown next to it.',
+  ['Reward pages (Loyalty and PvP Ladder)', [
+    'Item details next to every item, search and type filters, and buying several at once.',
+  ]],
+  ['Potion Bazaar', [
+    'The name and buffs of every potion under it, and buying several at once.',
+  ]],
+  ['Arena Token Shop', [
+    'Item names, search and type filters, and buying several at once.',
   ]],
   ['Skills Guide', [
     'Every skill with its type, who can learn it, the potions that give it and a bonus calculator.',
