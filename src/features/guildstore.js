@@ -1,3 +1,4 @@
+import { ITEM_TYPES, toggleType, typeButtonsCss, typeButtonsHtml } from '../core/typebuttons.js';
 import { adjustInventoryCount, withFst } from '../core/game.js';
 import { CRAFT_COLORS, RARITIES, norm } from '../core/items.js';
 import { FSB, loadSettings, recall, remember } from '../core/settings.js';
@@ -20,7 +21,6 @@ import { searchSelect } from './searchselect.js';
 //   index.php?cmd=guild&subcmd=inventory&subcmd2=takeitem&guildstore_id=..&ajax=1      take one item ({ r: 1, m } when it did not work)
 //   index.php?cmd=guild&subcmd=inventory&subcmd2=storeitems             the page that lists what can be deposited (storeIndex[] = inventory ids)
 //   app.php?browser=1&v=9&cmd=guild&subcmd=inventory&subcmd2=dostoreitems&items[]=<inventory id>   deposit ({ s: true } or { e: { message } })
-const TYPES = ['Helmet', 'Armor', 'Gloves', 'Boots', 'Weapon', 'Shield', 'Ring', 'Amulet', 'Rune', 'Quest Item', 'Potion', 'Component', 'Resource', 'Recipe', 'Container', 'Composed', 'Frag Stash'];
 const CDN = 'https://cdn2.fallensword.com/';
 const CRAFT_NAMES = ['Perfect', 'Excellent', 'Very Good', 'Good', 'Average', 'Poor', 'Very Poor'];
 const UNCRAFTED_COLOR = '#888888';
@@ -85,12 +85,7 @@ export function initGuildStore() {
     '#fsbGs td.c{width:20px;}#fsbGs td.i{width:26px;padding:1px 3px;}#fsbGs td.i img{display:block;width:24px;height:24px;object-fit:contain;}' +
     '#fsbGs td.n a{color:inherit;text-decoration:none;font-weight:bold;cursor:help;}' +
     '#fsbGs .bpAhHtml{display:inline-flex;flex:none;line-height:0;}#fsbGs .bpBuffBox .bpBoxSw.bpAhHtml{margin-top:-8px;left:2px;}' +
-    '#fsbGs .gsTypes{display:flex;flex-wrap:wrap;gap:5px;}' +
-    '#fsbGs .gsTyp{position:relative;box-sizing:border-box;margin:0;padding:2px;cursor:pointer;background:#e6d6ab;border:2px solid #8a6a3a;border-radius:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5);}' +
-    '#fsbGs .gsTyp:hover{background:#f0e3bf;}#fsbGs .gsTyp.on{background:#c8dc86;border-color:#4f6f12;box-shadow:inset 0 2px 4px rgba(0,0,0,.35);}#fsbGs .gsTyp.z:not(.on){opacity:.4;}' +
-    '#fsbGs .gsTyp i{display:block;width:18px;height:18px;background:url(' + CDN + 'ui/misc/backpack_tabs2.png) 0 0 no-repeat;}' +
-    '#fsbGs .gsTyp i.gsTx{background:none;font:bold 9px/18px Arial,sans-serif;color:#3b2a14;text-align:center;font-style:normal;}' +
-    '#fsbGs .gsCnt{position:absolute;right:-4px;bottom:-5px;min-width:13px;height:13px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:#2b2620;border:1px solid #8a6a3a;color:#fff;font:bold 9px/11px Arial,sans-serif;text-align:center;pointer-events:none;}' +
+    typeButtonsCss('#fsbGs') +
     '#fsbGs .gsEq{display:inline-block;vertical-align:middle;margin-left:3px;line-height:0;cursor:default;}' +
     '#fsbGs .bpBuffBox.bpAh{display:inline-block;}#fsbGs .bpBuffBox.bpAh input[type=text]{background:#e8c88e;border:1px solid #20170396;border-radius:4px;height:22px;padding:0 20px 0 6px;font:bold 11px Arial,sans-serif;color:#3b2a14;box-shadow:0 0 3px 0 #000;}' +
     '#fsbGs .bpBuffBox.bpAh.bpHasSw input[type=text]{padding-left:24px;}#fsbGs .bpBuffBox.bpAh input[type=text]:hover,#fsbGs .bpBuffBox.bpAh input[type=text]:focus{background:#f0d6a2;border-color:#3b2a14;outline:none;}' +
@@ -326,18 +321,11 @@ export function initGuildStore() {
   const CRAFT_OPT = [['', 'Crafted: any'], ['none', 'Not crafted']].concat(CRAFT_NAMES.map((n, i) => [String(i), n]));
   const opts = (list, cur) => list.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
   const ynSel = (id, cur, labels) => '<select id="' + id + '">' + opts([['', labels[0]], ['yes', labels[1]], ['no', labels[2]]], cur) + '</select>';
-  // the item type buttons (the game's own icons of the guild store window), each with how many items it would show under the other filters
-  const ICON_TYPES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16];
-  const TYPE_X = (t) => -20 * (t > 11 ? t - 1 : t); // the icons are in the sprite in this order: type 11 has none
+  // the item type buttons, each with how many items it would show under the other filters
   function typesHtml() {
-    // every type the game has an icon for (there are no components in a guild store), also those with no item; another type in the list is added
-    const have = Array.from(new Set(ICON_TYPES.concat(rows.map((r) => r.type)))).sort((a, b) => a - b);
     const left = {};
     visible(true).forEach((r) => { left[r.type] = (left[r.type] || 0) + 1; });
-    const total = Object.keys(left).reduce((n, t) => n + left[t], 0);
-    const btn = (t, name, n, inner) => '<button type="button" class="gsTyp' + ((t === '' ? !F.types.size : F.types.has(t)) ? ' on' : '') + (n ? '' : ' z') + '" data-t="' + t + '" title="' + esc(name) + '">' + inner + '<span class="gsCnt">' + n + '</span></button>';
-    return btn('', 'All types', total, '<i style="background-position:-340px 0"></i>') +
-      have.map((t) => btn(t, TYPES[t] || 'Type ' + t, left[t] || 0, ICON_TYPES.indexOf(t) === -1 ? '<i class="gsTx">' + esc((TYPES[t] || '?').slice(0, 3)) + '</i>' : '<i style="background-position:' + TYPE_X(t) + 'px 0"></i>')).join('');
+    return typeButtonsHtml(F.types, left, rows.map((r) => r.type));
   }
   function barHtml() {
     const bc = {};
@@ -408,7 +396,7 @@ export function initGuildStore() {
       h += '<tr data-id="' + r.id + '"><td class="c">' + (canSel(r) ? '<input type="checkbox" class="gsPick" data-id="' + r.id + '"' + (sel.has(r.id) ? ' checked' : '') + '>' : '') + '</td>' +
         '<td class="i"><img class="tip-dynamic" data-tipped="' + esc(tipOf(r)) + '" src="' + esc(imgOf(r)) + '" alt="" loading="lazy"></td>' +
         '<td class="n"><a class="tip-dynamic" style="color:' + cls + '" data-tipped="' + esc(tipOf(r)) + '">' + esc(r.name) + '</a>' + (r.set ? '<small>' + esc(r.set) + '</small>' : r.extra && r.extra.name ? '<small>Composed' + (r.extra.duration ? ' &middot; ' + r.extra.duration + ' min' : '') + '</small>' : '') + '</td>' +
-        '<td>' + esc(TYPES[r.type] || '') + '</td><td class="num">' + (r.lvl == null ? '' : r.lvl) + '</td>' +
+        '<td>' + esc(ITEM_TYPES[r.type] || '') + '</td><td class="num">' + (r.lvl == null ? '' : r.lvl) + '</td>' +
         (tab === 'take' ? '<td class="gsCr"' + (r.craft ? ' title="' + esc(r.craft).replace(/"/g, '&quot;') + '"' : '') + '>' + (r.cr >= 0 ? '<b style="color:' + CRAFT_DARK[r.cr] + '">' + esc(CRAFT_NAMES[r.cr]) + '</b>' : esc(r.craft)) + '</td>' : '') +
         '<td class="gsHfc">' + (r.forge ? '<span class="gsHf"><i></i><b>' + r.forge + '</b></span>' : '') + '</td>' +
         '<td class="gsTg">' + (r.tagged ? LOCK : '') + '</td>' +
@@ -619,7 +607,7 @@ export function initGuildStore() {
     if (vw) { view = vw.dataset.view; remember('gsView', view); page = 0; drawBody(false); return; }
     if (t.closest('#gsDir')) { sort = { k: sort.k, d: -sort.d }; drawBody(false); return; }
     const ty = t.closest('.gsTyp');
-    if (ty) { const v = ty.dataset.t; if (v === '') F.types.clear(); else { const n = +v; if (F.types.has(n)) F.types.delete(n); else F.types.add(n); } page = 0; drawList(); return; }
+    if (ty) { const v = ty.dataset.t; toggleType(F.types, v); page = 0; drawList(); return; }
     const tileImg = t.closest('.gsTile .inventory-item-slot');
     if (tileImg) { e.preventDefault(); const id = Number(tileImg.closest('.gsTile').dataset.id); if (sel.has(id)) sel.delete(id); else if (rows.some((r) => r.id === id)) sel.add(id); drawList(); return; }
     const head = t.closest('th.s');

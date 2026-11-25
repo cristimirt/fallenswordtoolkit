@@ -117,7 +117,10 @@ export const part = {
     sw('fstNotifStyle', v.notifStyle, 'Restyled notifications', 'The &quot;new logs&quot; and &quot;new Guild Chat messages&quot; notices in the menu get a softer look that matches the rest of the page, instead of the game&#39;s black box with a light border. Applied from the next page load.') +
     sw('fstTipCache', v.tipCache, 'Remember item tooltips for 10 seconds', 'Hovering an item again within 10 seconds shows the tooltip it had a moment ago, without asking the game again. A craft or upgrade shows up after those 10 seconds. Applied from the next page load.') +
     sw('fstSkillGuide', v.skillGuide, 'Improved Skills Guide', 'The Skill Guide page (Character > Skills > View Skill Guide) lists every skill with its type, whether it can be learned, the potions that have it (with level, duration and where they come from), whether it can be in a composed potion and from which composing level, with filters and a box to simulate the bonus at a skill level. The potion data comes from the wiki and was collected on 2026-11-20. Applied from the next page load.') +
-    sw('fstLoyalty', v.loyaltyInfo, 'Item information on the Loyalty page', 'The Loyalty page shows, next to every item you can buy, its name, type and quality and, for potions, the buffs with their level and duration, so you do not have to hover each item. What it reads is kept for 30 days. Applied from the next page load.'),
+    sw('fstArenaShop', v.arenaShop, 'Buy several items in the Arena Token Shop', 'The Arena Token Shop shows the name of every item under it, and a click asks how many to buy. They are then bought in the background, and it says how many were bought, or why not.') +
+    sw('fstBazaar', v.bazaarInfo, 'Improved Potion Bazaar', 'The name and buffs of every potion shown under it. Without the Fallen Sword Helper\'s own multi-buy, Buy also asks how many.') +
+    sw('fstLoyalty', v.loyaltyInfo, 'Improved Loyalty rewards page', 'The Loyalty page shows next to every item its name, type and quality and, for potions, the buffs with their level and duration; it has a search box and item type filters; and Buy asks how many, then buys them in the background and says how many were bought, or why not. What it reads about the items is kept for 30 days.') +
+    sw('fstLadder', v.ladderInfo, 'Improved PvP Ladder rewards page', 'The same on the PvP Rewards page of the PvP Ladder: item details, search, type filters and buying several at once.'),
   guild: (v) =>
     '<div class="bpSetH">Guild Store</div>' +
     sw('fstGuildStore', v.guildStore, 'Improved Guild Store window', 'The Store link of the Guild menu opens a window that lists the items of the guild store with their name, type, level and quality, has search and filters, can list the guild tagged items in the backpacks of the other members, and can deposit items from your backpack. Off: the game&#39;s own window. Takes effect on the next page load.'),
@@ -162,6 +165,9 @@ const readOthers = (was) => ({
   notifStyle: chk('fstNotifStyle', was.notifStyle),
   guildStore: chk('fstGuildStore', was.guildStore),
   loyaltyInfo: chk('fstLoyalty', was.loyaltyInfo),
+  ladderInfo: chk('fstLadder', was.ladderInfo),
+  bazaarInfo: chk('fstBazaar', was.bazaarInfo),
+  arenaShop: chk('fstArenaShop', was.arenaShop),
   tipCache: chk('fstTipCache', was.tipCache),
   skillGuide: chk('fstSkillGuide', was.skillGuide),
 });
