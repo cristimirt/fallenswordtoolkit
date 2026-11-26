@@ -11,6 +11,7 @@ A userscript for [Fallen Sword](https://fallensword.com/) that improves the back
 - **Guild Store:** a list or tile window with search, filters and sorting. Take or deposit several items at once, and take or recall items from other members.
 - **Reward pages:** on the Loyalty and PvP Ladder rewards pages, the details of every item next to it, search and type filters, and buying several at once.
 - **Potion Bazaar:** the name and buffs of every potion under it, and buying several at once (the Helper's multi-buy is left to the Helper).
+- **Composing:** when there is not enough gold to start or instantly finish a potion, one button withdraws what is missing from the bank and does it; or switch on Automatic Bank Withdrawal.
 - **Arena Token Shop:** item names, search and type filters, and buying several at once.
 - **Skills Guide:** every skill with its type, who can learn it, the potions that give it and a bonus calculator.
 - **Markets:** a searchable Buff Market, and search boxes and colour filters in the Auction House.

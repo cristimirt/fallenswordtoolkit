@@ -21,6 +21,9 @@ const SECTIONS = [
   ['Reward pages (Loyalty and PvP Ladder)', [
     'Item details next to every item, search and type filters, and buying several at once.',
   ]],
+  ['Composing', [
+    'Not enough gold to start or instantly finish a potion? One button, or Automatic Bank Withdrawal, takes what is missing from the bank.',
+  ]],
   ['Potion Bazaar', [
     'The name and buffs of every potion under it, and buying several at once.',
   ]],

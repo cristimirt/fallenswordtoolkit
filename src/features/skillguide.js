@@ -2,6 +2,7 @@ import { loadSettings, recall, remember } from '../core/settings.js';
 import { $, esc } from '../core/util.js';
 import { withFst } from '../core/game.js';
 import { COMPOSE, LEARN, POTIONS, TREES } from '../data/skillpotions.js';
+import { UNRELEASED_SKILLS } from '../data/unreleasedskills.js';
 
 // ---------------------------------------------------------------- improved Skills Guide
 // index.php?cmd=skills&subcmd=guide lists every skill of the game: the icon, the name and what it does. This replaces the list (setting
@@ -12,7 +13,8 @@ import { COMPOSE, LEARN, POTIONS, TREES } from '../data/skillpotions.js';
 //   - the potions that have it, with the level, the duration and where the potion comes from (wiki data, src/data/skillpotions.js),
 //   - whether it can be in a composed potion: from which composing level on, and the highest level a composed potion can have it,
 // and a bar of filters, and two boxes that work out the bonus at a skill level and what a composing level allows.
-// The skills and their descriptions are the game's own: they are read from the page that was replaced.
+// The skills and their descriptions are the game's own: they are read from the page that was replaced. Added to them are the
+// unreleased ones (src/data/unreleasedskills.js), marked as such.
 const TYPE_NAMES = ['Offense', 'Defense', 'Special'];
 const CDN = 'https://cdn2.fallensword.com/';
 const LIGHT = { Common: '#3b2a14', Rare: '#007a7a', Unique: '#a000a0', Legendary: '#a87400', 'Super Elite': '#c00000', Crystalline: '#6a3fb5', Epic: '#1a8a1a' };
@@ -86,6 +88,10 @@ export function initSkillGuide() {
     skills.push({ id, name: td[1].textContent.trim(), desc: td[2].innerHTML.replace(/\s+/g, ' ').trim() });
   });
   if (!skills.length) return;
+  UNRELEASED_SKILLS.forEach(([id, name]) => {
+    if (skills.some((s) => s.id === id || norm(s.name) === norm(name))) return;
+    skills.push({ id, name, desc: 'Unreleased. Only listed in the Auction House\'s "Grants Buff" filter.', unreleased: true });
+  });
   const byName = new Map(skills.map((s) => [norm(s.name), s]));
   skills.forEach((s) => { s.pp = perPoint(s.desc); s.potions = []; s.comp = COMPOSE[s.name] || null; s.type = -1; s.learn = false; s.rec = false; s.lr = LEARN[s.id] || null; });
   const byId = new Map(skills.map((s) => [s.id, s]));
@@ -134,6 +140,7 @@ export function initSkillGuide() {
       '#fsbSg input:checked+.trk{background:#5f8f2a;}#fsbSg input:checked+.trk::after{left:15px;}' +
       '#fsbSg .sgRow{display:flex;gap:10px;padding:8px 6px;border-top:1px solid #20170340;}#fsbSg .sgRow:first-child{border-top:0;}' +
       '#fsbSg .sgIco{flex:none;width:40px;height:40px;border:1px solid #20170396;border-radius:3px;background:#2e261c;}' +
+      '#fsbSg .sgNoImg{display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#d9b774;}' +
       '#fsbSg .sgMain{flex:1;min-width:0;}#fsbSg .sgName{font-size:14px;font-weight:700;color:#201703;}' +
       '#fsbSg .sgDesc{margin:2px 0 4px;color:#3b2a14;}' +
       '#fsbSg .sgFacts{display:flex;flex-wrap:wrap;gap:3px 14px;color:#6b5230;}#fsbSg .sgFacts b{font-weight:600;color:#3b2a14;}#fsbSg .sgYes{color:#2f6a12 !important;}#fsbSg .sgNo{color:#8a6a38 !important;}' +
@@ -209,7 +216,7 @@ export function initSkillGuide() {
     const c = s.comp;
     let sim = '';
     const lv = simBy.has(s.id) ? simBy.get(s.id) : st.lvl; // the level of the Simulate button next to a potion, else the one of the box on top
-    if (lv != null) sim += s.pp ? '<div class="sgLine">At skill level <b>' + lv + '</b>: <span class="sgSimv">' + esc(bonus(s.pp, lv)) + '</span></div>' : '<div class="sgLine">At skill level <b>' + lv + '</b>: this skill has no simple bonus per point.</div>';
+    if (lv != null && !s.unreleased) sim += s.pp ? '<div class="sgLine">At skill level <b>' + lv + '</b>: <span class="sgSimv">' + esc(bonus(s.pp, lv)) + '</span></div>' : '<div class="sgLine">At skill level <b>' + lv + '</b>: this skill has no simple bonus per point.</div>';
     let comp = '';
     if (c) {
       comp = '<div class="sgLine">Composed potions: from composing level <b>' + c[0] + '</b>, up to skill level <b>' + c[3] + '</b>' + (c[2] > c[0] ? ' (the maximum is reached at composing level ' + c[2] + ')' : '') + '.';
@@ -221,7 +228,7 @@ export function initSkillGuide() {
     }
     return '<div class="sgRow" data-id="' + s.id + '"><img class="sgIco" src="' + CDN + 'skills/' + s.id + '.png" alt="" width="40" height="40">' +
       '<div class="sgMain"><div class="sgName">' + esc(s.name) + lk(wikiUrl(s.name), 'Wiki', 'Wiki page of ' + s.name) + '</div><div class="sgDesc">' + s.desc + '</div>' +
-      '<div class="sgFacts">' + fact('Type', s.type >= 0, s.type >= 0 ? TYPE_NAMES[s.type] : 'not in a skill tree') + fact('Learned by players', s.learn, s.learn ? 'Yes' : 'No, potions only') + learnFacts(s) +
+      '<div class="sgFacts">' + fact('Type', s.type >= 0, s.type >= 0 ? TYPE_NAMES[s.type] : 'not in a skill tree') + fact('Learned by players', s.learn, s.learn ? 'Yes' : s.unreleased ? 'No' : 'No, potions only') + learnFacts(s) +
       fact('In potions', s.potions.length > 0, s.potions.length ? 'Yes (' + s.potions.length + ')' : 'No') + fact('In composed potions', !!c, c ? 'Yes' : 'No') + '</div>' +
       sim + comp +
       (s.potions.length ? '<button type="button" class="sgToggle" data-id="' + s.id + '">' + (showPots ? 'Hide' : 'Show') + ' the ' + s.potions.length + ' potions</button>' + (showPots ? '<div class="sgPots">' + potHtml(s) + '</div>' : '') : '') +
@@ -234,6 +241,8 @@ export function initSkillGuide() {
     list = list.sort(by[st.sort] || by.name);
     $('#sgCount').text(list.length + ' of ' + skills.length + ' skills');
     $('#sgList').html(list.length ? list.map(rowHtml).join('') : '<div class="sgNone">No skill matches these filters.</div>');
+    // some unreleased skills have no icon (yet): a question mark in its place
+    $('#sgList img.sgIco').on('error', function () { $(this).replaceWith('<span class="sgIco sgNoImg" title="No icon">?</span>'); });
   }
 
   // ---------- events

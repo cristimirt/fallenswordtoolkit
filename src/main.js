@@ -12,6 +12,7 @@ import { initTipCache } from './core/tipcache.js';
 import { initNotifications } from './features/notifications.js';
 import { initGuildStore } from './features/guildstore.js';
 import { initBazaar } from './features/bazaar.js';
+import { initComposeGold } from './features/composegold.js';
 import { initArenaShop } from './features/arenashop.js';
 import { initLoyalty } from './features/loyalty.js';
 import { initSkillGuide } from './features/skillguide.js';
@@ -41,6 +42,7 @@ export default function start(ctx) {
   initLoyalty();
   initArenaShop();
   initBazaar();
+  initComposeGold();
   initSkillGuide();
   initPathfinder();
   initQuickBuffPopup();
