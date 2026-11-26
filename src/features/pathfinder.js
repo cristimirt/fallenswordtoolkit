@@ -59,6 +59,12 @@ export function initPathfinder() {
     return 'Cross to ' + worldMap(e.to) + ' world map';
   }
 
+  // ---- wiki pages: a small "W" beside every zone of the way (a zone's page has its name)
+  const wikiUrl = (name) => 'https://wiki.fallensword.com/index.php/' + encodeURIComponent(name.replace(/ /g, '_')).replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2C/g, ',').replace(/%27/g, "'");
+  const wikiLink = (name) => '<a class="pfWiki" href="' + esc(wikiUrl(name)) + '" target="_blank" rel="noopener" title="Wiki page of ' + esc(name) + '">W</a>';
+  // the website opens on the area you are in (#area=name)
+  const siteUrl = () => { const name = (pf.here && pf.here.name) || pf.hereName; return PF_SITE + (name ? '#area=' + encodeURIComponent(name) : ''); };
+
   // ---- where the player is, and the route from there
   function readGame() {
     try {
@@ -171,6 +177,8 @@ export function initPathfinder() {
     '#fsbPf .pfRest li{padding:2px 0;border-top:1px dotted #c9b27c;}' +
     '#fsbPf .pfRest li:first-child{border-top:0;}' +
     '#fsbPf .pfFrom{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:#8a6b3a;}' +
+    '#fsbPf a.pfWiki{display:inline-block;margin-left:5px;padding:0 4px;font:700 10px/14px Georgia,serif;letter-spacing:0;color:#4f3717;background:#e9d6a8;border:1px solid #4f3717;border-radius:3px;text-decoration:none;vertical-align:middle;}' +
+    '#fsbPf a.pfWiki:hover{background:#f6e7bf;}' +
     '#fsbPf .pfFoot{padding:4px 8px 6px;border-top:1px solid #c9b27f;text-align:center;font-size:11px;}' +
     '#fsbPf .pfFoot a{color:#6b3d00;}' +
     '#fsbPfBtn{width:17px;height:17px;padding:0;margin:0 0 0 3px;box-sizing:border-box;border:1px solid #4f3717;border-radius:3px;background:center / 16px no-repeat var(--fsbPfIcon),#e9d6a8;cursor:pointer;}' +
@@ -350,6 +358,7 @@ export function initPathfinder() {
 
   function renderBody() {
     if (!panel) return;
+    panel.querySelector('.pfFoot a').href = siteUrl();
     const body = panel.querySelector('.pfBody');
     const to = pf.router && pf.router.byName[pf.dest];
     let h = '';
@@ -362,7 +371,7 @@ export function initPathfinder() {
     } else if (!to) {
       h = '<div class="pfMsg pfErr">“' + esc(pf.dest) + '” is not in the map data.</div>';
     } else {
-      h = '<div class="pfDest">Going to <b>' + esc(to.name) + '</b> <span>Lv ' + to.level + '</span></div>';
+      h = '<div class="pfDest">Going to <b>' + esc(to.name) + '</b>' + wikiLink(to.name) + ' <span>Lv ' + to.level + '</span></div>';
       const first = pf.route && pf.route[0];
       if (!pf.here) {
         h += '<div class="pfMsg">Your current area is not in the map data' + (pf.hereName ? ' (' + esc(pf.hereName) + ')' : '') + '.</div>';
@@ -377,9 +386,9 @@ export function initPathfinder() {
         const moves = Math.max(0, Math.round(pf.route.total - first.walk + walk));
         const m = stepMain(first);
         h += '<div class="pfCount"><b>' + pf.route.length + '</b> step' + (pf.route.length === 1 ? '' : 's') + ' · about <b>' + moves + '</b> moves</div>' +
-          '<div class="pfNext"><div class="pfIn">Next, in ' + esc(first.from) + '</div>' +
+          '<div class="pfNext"><div class="pfIn">Next, in ' + esc(first.from) + wikiLink(first.from) + '</div>' +
           (m.lead ? '<div class="pfLead">' + esc(m.lead) + '</div>' : '') +
-          '<div class="pfBig">' + esc(m.main) + '</div>' +
+          '<div class="pfBig">' + esc(m.main) + wikiLink(first.edge.to) + '</div>' +
           (m.sub ? '<div class="pfSub">' + esc(m.sub) + '</div>' : '') +
           (first.edge.note ? '<div class="pfNote">' + esc(first.edge.note) + '</div>' : '') +
           (isWalk(first.edge.kind)
@@ -387,7 +396,7 @@ export function initPathfinder() {
             : '') +
           '</div>';
         if (pf.route.length > 1) {
-          h += '<ol class="pfRest" start="2">' + pf.route.slice(1).map((s) => '<li><span class="pfFrom">' + esc(s.from) + '</span>' + esc(stepShort(s)) + '</li>').join('') + '</ol>';
+          h += '<ol class="pfRest" start="2">' + pf.route.slice(1).map((s) => '<li><span class="pfFrom">' + esc(s.from) + '</span>' + esc(stepShort(s)) + wikiLink(s.edge.to) + '</li>').join('') + '</ol>';
         }
       }
     }
