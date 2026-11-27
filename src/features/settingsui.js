@@ -132,6 +132,8 @@ export const part = {
     sw('fstFootprints', v.footprints, 'Remember Footprints', 'The game&#39;s Footprints button on the world page stays on after you reload the page, and the tiles it marked are kept for each map and put back. Pressing the button clears them, as in the game. Takes effect on the next page load.'),
   pf: (v) =>
     '<div class="bpSetH">Path Finder</div>' +
+    sw('fstPortalSearch', v.portalSearch, 'Portal search', 'A search box in the portal window, over the list of destinations: type part of a name, a level or a range of levels. Applied from the next page load.') +
+    sw('fstMapTips', v.mapTips, 'World map tooltips', 'On a world map, the tooltip of a place is shown under it (not in the corner of the page), with the minimum level of the zone. Applied from the next page load.') +
     sw('fstPfOn', v.pfEnabled, 'Path Finder', 'The Path Finder button on the world page, which opens a panel that shows the way to any area, step by step. Shown from the next page load.') +
     sw('fstPfPortals', recall('pathfinderPortals') !== '0', 'Use portals', 'Use portals to reach other world maps when working out the way. Off: the way never uses a portal. Same as the switch in the Path Finder panel.') +
     sw('fstPfWays', recall('pathfinderWaysOnly') === '1', 'Only the Cathedral of Ways portal', 'All the other portals, except the one in the Cathedral of Ways, are ignored when working out the way. Same as the switch in the Path Finder panel.'),
@@ -162,6 +164,8 @@ const readOthers = (was) => ({
   breakBtn: chk('fstBreakBtn', was.breakBtn),
   wikiBtn: chk('fstWikiBtn', was.wikiBtn),
   pfEnabled: chk('fstPfOn', was.pfEnabled),
+  mapTips: chk('fstMapTips', was.mapTips),
+  portalSearch: chk('fstPortalSearch', was.portalSearch),
   footprints: chk('fstFootprints', was.footprints),
   notifStyle: chk('fstNotifStyle', was.notifStyle),
   guildStore: chk('fstGuildStore', was.guildStore),

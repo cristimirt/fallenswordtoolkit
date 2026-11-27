@@ -1,3 +1,4 @@
+import { loadMapData, mapDataUrl, PF_SITE } from '../core/mapdata.js';
 import { loadSettings, recall, remember } from '../core/settings.js';
 import { esc } from '../core/util.js';
 import { FSRoute } from './route.js';
@@ -6,13 +7,11 @@ import { FSRoute } from './route.js';
 // A button beside the map buttons opens a draggable panel: type where you want to go (by name, or by level) and it shows the way
 // from where you stand now, step by step, following you as you move. The routing is the same code as the Path Finder website
 // (generated into the block below by tools/sync-helper.js of that project, edit route.js there, not the copy) and the data is the
-// website's route.json, loaded the first time the panel is opened (a different address can be set in localStorage FSB_pathfinderUrl).
-const PF_SITE = 'https://cristimirt.github.io/fspathfinder/';
+// website's route.json, loaded the first time the panel is opened (core/mapdata.js).
 
 // <<< route.js
 export function initPathfinder() {
   if (!/[?&]cmd=world(&|$)/.test(location.search) || !loadSettings().pfEnabled) return;
-  const dataUrl = () => recall('pathfinderUrl') || PF_SITE + 'route.json';
   const pf = {
     open: recall('pathfinderOpen') === '1',
     dest: recall('pathfinderDest') || '',
@@ -43,7 +42,7 @@ export function initPathfinder() {
     if (e.kind === 'stairs') {
       return { lead: 'Take the stairs' + (e.x == null ? '' : ' at ' + coord(e.x, e.y)) + ' to', main: e.to, sub: e.ax == null ? '' : 'you arrive at ' + coord(e.ax, e.ay) };
     }
-    if (e.kind === 'portal') return { lead: 'Take the portal at ' + coord(e.x, e.y) + ' to', main: worldMap(e.to), sub: e.name + ', world map' };
+    if (e.kind === 'portal') return { lead: 'Take the portal at ' + coord(e.x, e.y) + ' to', main: worldMap(e.to), sub: e.name + ', world map, costs 25 stamina' };
     if (e.kind === 'free') return { main: 'Teleport to ' + e.to, sub: 'from anywhere, costs 25 stamina, you arrive at ' + coord(e.ax, e.ay) };
     if (e.kind === 'exit') return { main: 'Leave to the ' + worldMap(e.to) + ' world map', sub: e.x == null ? '' : 'exit tile ' + coord(e.x, e.y) };
     if (e.kind === 'enter') return { main: 'Enter ' + e.to, sub: 'from the ' + worldMap(step.from) + ' world map' + (e.x == null ? '' : ', you appear at ' + coord(e.x, e.y)) };
@@ -111,12 +110,10 @@ export function initPathfinder() {
     pf.loadError = '';
     renderBody();
     try {
-      const res = await fetch(dataUrl());
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      pf.router = FSRoute.create(await res.json());
+      pf.router = FSRoute.create(await loadMapData());
       recompute();
     } catch (e) {
-      pf.loadError = 'Could not load the map data (' + e.message + ') from ' + dataUrl();
+      pf.loadError = 'Could not load the map data (' + e.message + ') from ' + mapDataUrl();
     }
     pf.loading = false;
     renderBody();
@@ -183,6 +180,11 @@ export function initPathfinder() {
     '#fsbPf .pfFoot a{color:#6b3d00;}' +
     '#fsbPfBtn{width:17px;height:17px;padding:0;margin:0 0 0 3px;box-sizing:border-box;border:1px solid #4f3717;border-radius:3px;background:center / 16px no-repeat var(--fsbPfIcon),#e9d6a8;cursor:pointer;}' +
     '#fsbPfBtn:hover{filter:brightness(1.12);}#fsbPfBtn.fsbBeside{margin-left:8px;vertical-align:middle;}' +
+    // on a world map (master realm), which has neither a button row nor an area name: a labelled button beside the map picture
+    '#masterRealmContainer{position:relative;}' +
+    '#fsbPfBtn.fsbOnMap{position:absolute;top:0;right:8px;z-index:5;display:flex;align-items:center;gap:5px;width:auto;height:24px;margin:0;padding:0 8px 0 5px;background:#e9d6a8;color:#361c04;font:700 11px/1 "Open Sans",Helvetica,Arial,sans-serif;}' +
+    '#fsbPfBtn.fsbOnMap::before{content:"";width:16px;height:16px;background:center / contain no-repeat var(--fsbPfIcon);}' +
+    '#fsbPfBtn.fsbOnMap::after{content:"Path Finder";}' +
     '#fsbPfBtn.fsbFloat{position:fixed;top:8px;right:8px;z-index:9000;width:26px;height:26px;margin:0;background-size:22px,auto;}' +
     '#fsbPf .pfRest,#fsbPf .pfSugg{scrollbar-width:thin;scrollbar-color:#a98a52 #e3cf9c;}';
   document.head.appendChild(css);
@@ -383,9 +385,9 @@ export function initPathfinder() {
         h += '<div class="pfMsg pfErr">No known way from <b>' + esc(pf.here.name) + '</b> in this data.</div>';
       } else {
         const walk = liveWalk(first, pf.tile);
-        const moves = Math.max(0, Math.round(pf.route.total - first.walk + walk));
+        const stamina = Math.max(0, Math.round(pf.route.total - first.walk + walk));
         const m = stepMain(first);
-        h += '<div class="pfCount"><b>' + pf.route.length + '</b> step' + (pf.route.length === 1 ? '' : 's') + ' · about <b>' + moves + '</b> moves</div>' +
+        h += '<div class="pfCount"><b>' + pf.route.length + '</b> step' + (pf.route.length === 1 ? '' : 's') + ' · <span class="tip-static" data-tipped="An estimate: 1 stamina a move, 25 for a portal or the teleport.">total stamina: <b>' + stamina + '</b></span></div>' +
           '<div class="pfNext"><div class="pfIn">Next, in ' + esc(first.from) + wikiLink(first.from) + '</div>' +
           (m.lead ? '<div class="pfLead">' + esc(m.lead) + '</div>' : '') +
           '<div class="pfBig">' + esc(m.main) + wikiLink(first.edge.to) + '</div>' +
@@ -426,11 +428,20 @@ export function initPathfinder() {
   btn.className = 'tip-static';
   btn.setAttribute('data-tipped', 'Find the way to an area');
   btn.addEventListener('click', () => { if (pf.open) closePanel(); else openPanel(); });
-  // Where the page has no (visible) button row or area name, as on some world maps, the button floats in the corner of the page instead.
+  // A world map has neither: there the button goes on the map's own box. Where nothing of this is on the page, it floats in the
+  // corner of the page instead.
   function placeButton() {
     const box = document.getElementById('fshWorldButtonContainer');
     const title = document.getElementById('worldName');
     const host = [box, title].find((h) => h && h.offsetParent !== null);
+    const map = !host && document.getElementById('masterRealmContainer');
+    const onMap = !!map && map.offsetParent !== null;
+    btn.classList.toggle('fsbOnMap', onMap);
+    if (onMap) {
+      btn.classList.remove('fsbFloat', 'fsbBeside');
+      if (btn.parentNode !== map) map.appendChild(btn);
+      return;
+    }
     if (!host) {
       if (btn.parentNode !== document.body || !btn.classList.contains('fsbFloat')) { btn.classList.add('fsbFloat'); document.body.appendChild(btn); }
       return;
@@ -444,7 +455,7 @@ export function initPathfinder() {
   const watched = new Set();
   function watch() { // the other scripts and the game rebuild these elements: the button is put back right away
     const mo = new MutationObserver(placeButton);
-    ['worldContainer', 'worldName', 'fshWorldButtonContainer'].forEach((id) => {
+    ['worldContainer', 'worldName', 'fshWorldButtonContainer', 'masterRealmContainer'].forEach((id) => {
       const el = document.getElementById(id);
       if (el && !watched.has(el)) { watched.add(el); mo.observe(el, { childList: true }); }
     });
