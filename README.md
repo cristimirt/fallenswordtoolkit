@@ -15,7 +15,7 @@ A userscript for [Fallen Sword](https://fallensword.com/) that improves the back
 - **Arena Token Shop:** item names, search and type filters, and buying several at once.
 - **Skills Guide:** every skill with its type, who can learn it, the potions that give it and a bonus calculator.
 - **Markets:** a searchable Buff Market, and search boxes and colour filters in the Auction House.
-- **World map:** a wiki button, Footprints kept after a reload, and a Path Finder (with a switch for portals).
+- **World map:** a wiki button, Footprints kept after a reload, a Path Finder (with a switch for portals), and a search box over the portal's list of destinations; on world maps, tooltips that sit under each place and show the zone's level.
 - **Quick Buff:** a draggable window with the buffs a target already has.
 - **Also:** draggable sidebar widgets, and it works next to the Fallen Sword Helper.
 

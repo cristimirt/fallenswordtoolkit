@@ -38,6 +38,8 @@ const SECTIONS = [
   ]],
   ['World map', [
     'A wiki button, Footprints kept after a reload, and a Path Finder with a switch for portals.',
+    'A search box over the portal’s list of destinations, by name or level.',
+    'World map tooltips that sit under each place and show the zone’s level.',
   ]],
   ['Quick Buff', [
     'A draggable window with the buffs a target already has.',
