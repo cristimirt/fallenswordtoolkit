@@ -20,6 +20,7 @@ import { initSkillGuide } from './features/skillguide.js';
 import { initAuctionHouse, initBuffMarket } from './features/markets.js';
 import { initPathfinder } from './features/pathfinder.js';
 import { initPortalSearch } from './features/portalsearch.js';
+import { initBlueprints } from './features/blueprints.js';
 import { initQuickBuffPopup } from './features/quickbuff.js';
 import { initFstTab, installSettingsui } from './features/settingsui.js';
 import { initSidebarWidgets } from './features/sidebars.js';
@@ -48,6 +49,7 @@ export default function start(ctx) {
   initSkillGuide();
   initPathfinder();
   initPortalSearch();
+  initBlueprints();
   initMasterMap();
   initQuickBuffPopup();
   installAutobreak();

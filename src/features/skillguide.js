@@ -1,4 +1,5 @@
 import { loadSettings, recall, remember } from '../core/settings.js';
+import { toggleHtml, useToggleStyle } from '../core/toggle.js';
 import { $, esc } from '../core/util.js';
 import { withFst } from '../core/game.js';
 import { COMPOSE, LEARN, POTIONS, TREES } from '../data/skillpotions.js';
@@ -120,7 +121,7 @@ export function initSkillGuide() {
   const wikiUrl = (name) => WIKI + encodeURIComponent(name.replace(/ /g, '_')).replace(/%28/g, '(').replace(/%29/g, ')').replace(/%2C/g, ',').replace(/%27/g, "'");
   const guideUrl = (id) => 'https://guide.fallensword.com/index.php?cmd=items&subcmd=view&item_id=' + id;
   const lk = (href, label, title) => '<a class="sgLk" href="' + esc(href) + '" target="_blank" rel="noopener" title="' + esc(title) + '">' + label + '</a>';
-  const sw = (id, on, label) => '<label class="sgSw"><span class="sgTg"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="trk"></span></span>' + label + '</label>';
+  const sw = (id, on, label) => '<label class="sgSw">' + toggleHtml('id="' + id + '"', on) + label + '</label>';
   const opts = (list, cur) => list.map((o) => '<option value="' + o[0] + '"' + (String(o[0]) === String(cur) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('');
 
   // ---------- style
@@ -134,10 +135,7 @@ export function initSkillGuide() {
       '#fsbSg .sgBar input[type=text]{width:170px;}#fsbSg .sgBar input[type=number]{width:70px;}' +
       '#fsbSg .sgBar b{font-weight:600;}#fsbSg .sgBtn{font:inherit;background:#d9b774;border:1px solid #20170396;border-radius:3px;padding:2px 8px;color:#3b2a14;cursor:pointer;}#fsbSg .sgBtn:hover{background:#e6c783;}' +
       '#fsbSg .sgCount{margin-left:auto;color:#6b5230;}' +
-      '#fsbSg .sgSw,#fsbSg .sgSw *{cursor:pointer !important;}#fsbSg .sgSw{display:inline-flex;align-items:center;gap:5px;}#fsbSg .sgTg{position:relative;display:inline-block;flex:none;}#fsbSg .sgTg input{position:absolute;opacity:0;width:100%;height:100%;margin:0;}' +
-      '#fsbSg .trk{display:block;box-sizing:content-box;width:26px;height:13px;border:1px solid #20170396;border-radius:8px;background:#b79862;position:relative;transition:background .15s;}' +
-      '#fsbSg .trk::after{content:"";position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;box-sizing:border-box;background:#f6e8c4;border:1px solid #20170396;transition:left .15s;}' +
-      '#fsbSg input:checked+.trk{background:#5f8f2a;}#fsbSg input:checked+.trk::after{left:15px;}' +
+      '#fsbSg .sgSw,#fsbSg .sgSw *{cursor:pointer !important;}#fsbSg .sgSw{display:inline-flex;align-items:center;gap:5px;}' +
       '#fsbSg .sgRow{display:flex;gap:10px;padding:8px 6px;border-top:1px solid #20170340;}#fsbSg .sgRow:first-child{border-top:0;}' +
       '#fsbSg .sgIco{flex:none;width:40px;height:40px;border:1px solid #20170396;border-radius:3px;background:#2e261c;}' +
       '#fsbSg .sgNoImg{display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#d9b774;}' +
@@ -156,6 +154,7 @@ export function initSkillGuide() {
       '#fsbSg .sgPotL{flex:none;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}#fsbSg .sgPotL small{display:block;color:#6b5230;font-size:11px;}' +
       '#fsbSg .sgNone{padding:20px;text-align:center;color:#6b5230;}';
     document.head.appendChild(el);
+    useToggleStyle();
   }
 
   // ---------- page
