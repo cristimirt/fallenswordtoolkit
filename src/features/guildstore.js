@@ -2,6 +2,7 @@ import { ITEM_TYPES, toggleType, typeButtonsCss, typeButtonsHtml } from '../core
 import { adjustInventoryCount, withFst } from '../core/game.js';
 import { CRAFT_COLORS, RARITIES, norm } from '../core/items.js';
 import { FSB, loadSettings, recall, remember } from '../core/settings.js';
+import { toggleHtml, useToggleStyle } from '../core/toggle.js';
 import { $, esc } from '../core/util.js';
 import { fetchBag } from './autobreak.js';
 import { COMPOSE, POTIONS } from '../data/skillpotions.js';
@@ -69,10 +70,6 @@ export function initGuildStore() {
     '#fsbGs .gsBtn{cursor:pointer;background:#e9d3a0;color:#3b2a14;border:1px solid #20170396;border-radius:3px;padding:2px 10px;font:12px Arial,sans-serif;box-shadow:0 0 2px #00000066;}' +
     '#fsbGs .gsBtn:hover{background:#f3e2b8;}#fsbGs .gsBtn:disabled{opacity:.5;cursor:default;}' +
     '#fsbGs .gsBtn.go{background:#c9dc9a;}#fsbGs .gsBtn.go:hover{background:#d6e8a8;}' +
-    '#fsbGs .gsSw,#fsbGs .gsSw *{cursor:pointer !important;}#fsbGs .gsSw{position:relative;display:inline-block;flex:none;}#fsbGs .gsSw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;}' +
-    '#fsbGs .gsSw .trk{display:block;box-sizing:content-box;width:26px;height:13px;border:1px solid #20170396;border-radius:8px;background:#b79862;position:relative;transition:background .15s;}' +
-    '#fsbGs .gsSw .trk::after{content:"";position:absolute;top:2px;left:2px;width:9px;height:9px;border-radius:50%;background:#f6e8c4;border:1px solid #20170396;box-sizing:border-box;transition:left .15s;}' +
-    '#fsbGs .gsSw input:checked+.trk{background:#5f8f2a;}#fsbGs .gsSw input:checked+.trk::after{left:15px;}' +
     '#fsbGs .gsHelp{border-bottom:1px dotted #3b2a14;cursor:help;}' +
     '#fsbGs .gsList{overflow-y:auto;min-height:120px;max-height:calc(100vh - 250px);border:1px solid #20170396;border-radius:3px;background:#f6e8c4;scrollbar-width:thin;scrollbar-color:#8a6a38 #d9b774;}' +
     '#fsbGs .gsList::-webkit-scrollbar{width:9px;height:9px;}#fsbGs .gsList::-webkit-scrollbar-track{background:#d9b774;border-radius:4px;box-shadow:inset 0 0 2px #20170399;}' +
@@ -122,6 +119,7 @@ export function initGuildStore() {
     '#fsbGs .gsTile .gsTn{font-weight:bold;text-decoration:none;cursor:help;line-height:1.2;word-break:break-word;}' +
     '#fsbGs .gsTile small{opacity:.8;line-height:1.2;}#fsbGs .gsTile .gsBtn{margin-top:auto;padding:1px 8px;}';
   document.head.appendChild(css);
+  useToggleStyle();
 
   let box = null;
   let tab = recall('gsTab') === 'put' ? 'put' : 'take';
@@ -315,7 +313,7 @@ export function initGuildStore() {
     return u;
   };
   const sw = (id, on, label, tip) =>
-    '<label><span class="gsSw"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '><span class="trk"></span></span>' + label +
+    '<label>' + toggleHtml('id="' + id + '"', on) + label +
     (tip ? ' <span class="gsHelp tip-static" data-tipped="' + esc('<div style="max-width:240px;white-space:normal">' + tip + '</div>').replace(/"/g, '&quot;') + '">[?]</span>' : '') + '</label>';
   const HF_OPT = [['', 'Hell Forged: any'], ['none', 'Not hell forged'], ['1', 'Hell Forge 1'], ['2', 'Hell Forge 2'], ['3', 'Hell Forge 3'], ['4', 'Hell Forge 4'], ['5', 'Hell Forge 5']];
   const CRAFT_OPT = [['', 'Crafted: any'], ['none', 'Not crafted']].concat(CRAFT_NAMES.map((n, i) => [String(i), n]));

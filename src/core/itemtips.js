@@ -21,7 +21,7 @@ export function rarityOf(info) {
 const fresh = (e) => !!e && Date.now() - e.at <= MAX_AGE && e.n !== 'Item Details';
 export const itemIdOf = (tip) => { const m = /item_id=(\d+)/.exec(tip); return m ? m[1] : ''; };
 
-function parseTip(html) {
+export function parseTip(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const w = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
   const nodes = [];
@@ -39,7 +39,7 @@ function parseTip(html) {
     for (let i = d + 1; i + 2 < rest.length && /^\d+$/.test(rest[i + 1]) && /^\d+\s*[mhd]/i.test(rest[i + 2]); i += 3) buffs.push([rest[i], rest[i + 1], rest[i + 2]]);
   }
   const extra = buffs.length ? '' : rest.filter((x) => !/^Note:/.test(x)).join(' · ').slice(0, 220);
-  return { n: nodes[0], t: tq ? tq[1] : nodes[1] === 'Quest' ? 'Quest Item' : '', q: tq ? tq[2] : '', c: font ? font.getAttribute('color').toUpperCase() : '', b: buffs, x: extra, at: Date.now() };
+  return { n: nodes[0], t: tq ? tq[1] : nodes[1] === 'Quest' ? 'Quest Item' : '', q: tq ? tq[2] : '', c: font ? font.getAttribute('color').toUpperCase() : '', b: buffs, x: extra, l: Number((/Min Level:?\s*(\d+)/.exec(rest.join(' ')) || [])[1]) || 0, at: Date.now() };
 }
 
 const getTip = (u) => new Promise((resolve) => { $.ajax({ url: withFst('/' + u.replace(/^\//, '')), dataType: 'text', success: (t) => resolve({ ok: true, t }), error: (x) => resolve({ ok: false, status: x.status }) }); });

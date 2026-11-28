@@ -116,6 +116,7 @@ export const part = {
     '<div class="bpSetH">Looks</div>' +
     sw('fstNotifStyle', v.notifStyle, 'Restyled notifications', 'The &quot;new logs&quot; and &quot;new Guild Chat messages&quot; notices in the menu get a softer look that matches the rest of the page, instead of the game&#39;s black box with a light border. Applied from the next page load.') +
     sw('fstTipCache', v.tipCache, 'Remember item tooltips for 10 seconds', 'Hovering an item again within 10 seconds shows the tooltip it had a moment ago, without asking the game again. A craft or upgrade shows up after those 10 seconds. Applied from the next page load.') +
+    sw('fstBlueprints', v.blueprintList, 'All blueprints', 'On the Inventing page, every blueprint of every folder in one list: search by name or ingredient, filter, sort, see what you have of each ingredient, invent and move blueprints. The game&#39;s folder view is one click away. Applied from the next page load.') +
     sw('fstSkillGuide', v.skillGuide, 'Improved Skills Guide', 'The Skill Guide page (Character > Skills > View Skill Guide) lists every skill with its type, whether it can be learned, the potions that have it (with level, duration and where they come from), whether it can be in a composed potion and from which composing level, with filters and a box to simulate the bonus at a skill level. The potion data comes from the wiki and was collected on 2026-11-20. Applied from the next page load.') +
     sw('fstArenaShop', v.arenaShop, 'Buy several items in the Arena Token Shop', 'The Arena Token Shop shows the name of every item under it, and a click asks how many to buy. They are then bought in the background, and it says how many were bought, or why not.') +
     sw('fstComposeGold', v.composeGold, 'Withdraw gold for composed potions', 'When a composed potion cannot be started or instantly finished because you do not have enough gold, you are offered to withdraw what is missing from the bank and do it. The Composing page also gets an Automatic Bank Withdrawal switch, which does that before the request is sent. Applied from the next page load.') +
@@ -166,6 +167,7 @@ const readOthers = (was) => ({
   pfEnabled: chk('fstPfOn', was.pfEnabled),
   mapTips: chk('fstMapTips', was.mapTips),
   portalSearch: chk('fstPortalSearch', was.portalSearch),
+  blueprintList: chk('fstBlueprints', was.blueprintList),
   footprints: chk('fstFootprints', was.footprints),
   notifStyle: chk('fstNotifStyle', was.notifStyle),
   guildStore: chk('fstGuildStore', was.guildStore),

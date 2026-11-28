@@ -14,6 +14,7 @@ A userscript for [Fallen Sword](https://fallensword.com/) that improves the back
 - **Composing:** when there is not enough gold to start or instantly finish a potion, one button withdraws what is missing from the bank and does it; or switch on Automatic Bank Withdrawal.
 - **Arena Token Shop:** item names, search and type filters, and buying several at once.
 - **Skills Guide:** every skill with its type, who can learn it, the potions that give it and a bonus calculator.
+- **Inventing:** every blueprint of every folder in one paged list, with the folders to pick from, search by name or ingredient, filters, sorting, what you have of each ingredient, and inventing and moving from the list.
 - **Markets:** a searchable Buff Market, and search boxes and colour filters in the Auction House.
 - **World map:** a wiki button, Footprints kept after a reload, a Path Finder (with a switch for portals), and a search box over the portal's list of destinations; on world maps, tooltips that sit under each place and show the zone's level.
 - **Quick Buff:** a draggable window with the buffs a target already has.
@@ -29,8 +30,8 @@ The toolkit is ES modules under `src/`, bundled with esbuild into one file. A sm
 |---|---|
 | `loader/fs_toolkit.user.js` | the loader (rarely changes; Tampermonkey updates it from the install page) |
 | `src/main.js` | the entry point: starts every feature |
-| `src/core/` | shared pieces: jQuery, dialogs, settings storage, requests to the game, tooltips, item data, item type buttons, search and multi-buy for the shops |
-| `src/features/` | one module per feature: `backpack`, `actionlist` (break down button), `markets`, `bagpopup`, `sidebars`, `wiki`, `pathfinder` (+ `route`), `guildstore`, `loyalty`, `arenashop`, `bazaar`, `skillguide`, `notifications`, `quickbuff`, `autobreak`, `settingsui` (quick settings and the FST tab) |
+| `src/core/` | shared pieces: jQuery, dialogs, settings storage, requests to the game, tooltips, item data, item type buttons, the toggle switch, search and multi-buy for the shops |
+| `src/features/` | one module per feature: `backpack`, `actionlist` (break down button), `markets`, `bagpopup`, `sidebars`, `wiki`, `pathfinder` (+ `route`), `guildstore`, `loyalty`, `arenashop`, `bazaar`, `skillguide`, `blueprints`, `notifications`, `quickbuff`, `autobreak`, `settingsui` (quick settings and the FST tab) |
 | `tools/build.mjs` | builds `dist/`: the bundle, `manifest.json`, the loader and the install page |
 | `tools/serve.mjs` | the development server (see below) |
 | `.github/workflows/` | `deploy.yml` publishes `dist/` to GitHub Pages on every push to `main`; `check.yml` builds on pull requests |

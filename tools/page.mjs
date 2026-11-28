@@ -33,6 +33,10 @@ const SECTIONS = [
   ['Skills Guide', [
     'Every skill with its type, who can learn it, the potions that give it and a bonus calculator.',
   ]],
+  ['Inventing', [
+    'Every blueprint of every folder in one list: search by name or ingredient, filter and sort.',
+    'What you have of each ingredient, and inventing and moving blueprints from the list.',
+  ]],
   ['Markets', [
     'A searchable Buff Market, and search boxes and colour filters in the Auction House.',
   ]],
